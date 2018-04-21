@@ -1,0 +1,77 @@
+\section{Monads}
+
+\label{sec:monads}
+
+Purity, often also called referential transparency, is the property of
+a function to always produce the same result when called with the same
+arguments. It is a very desirable property as it makes it considerably
+easier to reason about the behaviour of a program, particularly with
+respects to refactoring. But it also allows optimisations, such as
+common subexpression elimination and memoization.
+
+However, many tasks that we wish programs to perform cannot be
+expressed in terms of pure functions as they entail an interaction
+with the world outside of the program, such as accessing a database or
+querying the file system. Even inside of the program it is often
+useful to define some ambient environment in which certain tasks are
+performed, from this object oriented programming was conceived where
+each function, or method, carries around the implicit environment of
+an object.
+
+To perform the aforementioned tasks many programming languages opt to
+sacrifice purity and allow arbitrary side effects in any function. The
+designers of the Haskell programming language however found a way to
+enable side effects in programs without sacrificing purity.
+\textbf{Monads}, in the Haskell sense, are a class of types that
+describe some sort of environment, which can be interacted with. The
+concrete interactions a particular monad allows differ but what they
+have in common is a notion of sequentiality, encoded with the
+\textbf{bind} operator (\texttt{(>>=) :: Monad m => m a -> (a -> m b)
+  -> m b}), which connects an action performed with the monad and a
+continuation that requires the result of this interaction, and the
+ability to embed pure values into the monad (\texttt{pure :: Monad m
+  => a -> m a}).
+
+Of particular importance is the sequentiality of actions that is
+enforced by \texttt{>>=}. Since the left hand argument is a
+continuation the right hand action must be performed before the
+program can advance as the left hand function requires its result
+(though it is not required to use it). This structure allows ordering
+of side effects that may or may not produce actual results, such as
+writing to a table in a database.
+
+The Monad proved to be a very successful concept in describing
+sequential interactions with ambient environments and thus many
+different monads had soon been developed. Monads for interacting with
+the system (\texttt{IO}\footnote{Part of the \texttt{base} library}),
+for interacting with databases (\texttt{Redis}~\footnote{Part of the
+  \texttt{hedis}\cite{hedis} package for interacting with the Redis
+  Key-Value-Store}) or handling web requests in a server
+(\texttt{HandlerFor}\footnote{Part of the Yesod~\cite{yesod} web
+  framework}) as well as monads that defined environments embedded in
+the program such as \texttt{Writer}, which collects outputs,
+\texttt{Reader}, which adds a static environment and \texttt{ExceptT},
+which adds throwing and handling of user defined errors.
+
+Though each of these monads are well suited for interacting with the
+various environments they describe, they are rather unwieldy, if not
+impossible to use when we wish to interleave their effects. We may
+desire to read some data from the \texttt{Redis} database, perform
+some network \texttt{IO} afterwards and finally send some computed
+result as part of being a \texttt{HandlerFor}, all the while tracking
+potential \texttt{ExceptT} errors.
+
+This however is not possible with a simple monad. Most of these monads
+are opaque types, results from which can only be obtained by
+performing complex set-up and tear-down operations, and some, like the
+\texttt{HandlerFor} monad offer no way for the user to extract the
+pure data directly. This makes sense of course as the creation of this
+data entails certain opaque interactions with the environment from
+which it cannot be easily untangled. Though the power of the monad
+lies precisely in leaving those interactions opaque it poses a
+challenge when trying to achieve composability and interleaving of
+effects.
+
+The next section offers an overview of the current most popular
+solution for achieving composability: effect classes and monad
+transformers.

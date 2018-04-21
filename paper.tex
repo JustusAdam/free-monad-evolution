@@ -1,0 +1,62 @@
+\documentclass[sigconf]{acmart}
+
+\usepackage{booktabs} % For formal tables
+\usepackage[utf8]{inputenc}
+
+
+% Copyright
+%\setcopyright{none}
+%\setcopyright{acmcopyright}
+%\setcopyright{acmlicensed}
+\setcopyright{rightsretained}
+%\setcopyright{usgov}
+%\setcopyright{usgovmixed}
+%\setcopyright{cagov}
+%\setcopyright{cagovmixed}
+
+\begin{document}
+\title{History and Evolution of Freedom for Monads}
+
+
+\author{Justus Adam}
+\affiliation{}
+\email{justus.adam@tu-dresden.de}
+
+
+\begin{abstract}
+Side effects are the sore spot for pure languages. The mathematical
+beauty of referential transparency has to be broken to allow crude and
+unpredictable outside interactions, such as network and filesystem
+accesses, that are necessary to write useful programs.
+
+Fortunately with the Monad an abstraction was discovered that allowed
+safe and transparent, sequential interaction with an arbitrary ambient
+environment.
+
+Yet it too is flawed. Versatile though the Monad is, composing
+effects in a reusable fashion proved difficult and has performance
+implications which increase in severity as the granularity gets finer.
+
+With the free monad we now finally not only obtain a way to compose
+arbitrary effects together in an efficient way but can also easily
+implement effects via transformation into other effects and even
+implement the same effect in different ways depending on needs and
+constraints of its application.
+
+This paper provides an overview of the origins of the Monad, how its
+shortcomings lead to the invention transformers, then the free monad,
+and eventually the freer monad, how free and freer monads work and how
+they can be used to realise our collective dream of pure, efficient,
+composable and versatile ambient interactions.
+\end{abstract}
+
+\maketitle
+
+\input{Chapters/Introduction}
+\input{Chapters/Monads}
+\input{Chapters/Transformers}
+
+\bibliographystyle{ACM-Reference-Format}
+\bibliography{bibliography}
+
+\end{document}
