@@ -1,0 +1,185 @@
+\section{Freedon to the Rescue}
+
+\label{sec:free}
+
+In Section~\ref{sec:monads} the monad was introduced as a way to
+sequence effectful computations. Then various types of monads were
+found, encoding different effects.
+
+\subsection{Decoupling Monad and Effect}
+
+\label{sec:introducing-free}
+
+One of the most important discoveries \textbf{CITATION} was that the
+effect and its sequential nature can be separated and the latter
+encoded with a generic data structure. The essence of the monad,
+$\bindOp$ and \texttt{pure} is captured using the so called
+\textbf{free monad} (see figure~\ref{fig:free-monad}). This generic
+monad is parameterized by an effect type \texttt{f} which itself only
+needs to be a \Functor{}. Functors are much simpler structures than
+monads. They have no notion of sequentiality and continuations which
+makes them easier to implement. A Functor only needs to allow the
+application of a function to a contained value as illustrated by the
+type class \Functor{} displayed in figure~\ref{fig:functor-class}.
+
+\begin{figure}
+  \begin{lstlisting}
+    class Functor f where
+      fmap :: (a -> b) -> f a -> f b
+  \end{lstlisting}
+  \caption{The \Functor{} interface}
+  \label{fig:functor-class}
+\end{figure}
+\begin{figure}
+  \begin{lstlisting}
+    data Free f a
+      = Impure (f (Free f a))
+      | Pure a
+  \end{lstlisting}
+  \caption{The simple free monad}
+  \label{fig:free-monad}
+\end{figure}
+\begin{figure}
+  \begin{lstlisting}
+    join :: Monad m => m (m a) -> m a
+    join ma = ma >>= id
+
+    (>>=) :: Monad m => m a -> (a -> m b) -> m b
+    ma >>= cont = join $ fmap cont ma
+  \end{lstlisting}
+  \caption{The equivalence of $\bindOp$ and \texttt{join}}
+  \label{fig:join-bind-equivalence}
+\end{figure}
+\begin{figure}
+  \begin{lstlisting}
+    instance Functor f => Monad (Free f) where
+      pure = Pure
+      Pure a >>= cont = cont a
+      Impure fa >>= cont = Impure $ fmap (>>= cont) fa
+  \end{lstlisting}
+  \caption{The \Monad{} instance for \texttt{Free}}
+  \label{fig:free-monad-monad-instance}
+\end{figure}
+
+The two constructors for the free monad represent the two
+characteristic functions of the \Monad{} in category theory,
+\texttt{pure} and \texttt{join}, the latter represented by the
+\texttt{Impure} constructor. The \texttt{join :: Monad m => m (m a) ->
+  m a} function allows flattening of two stacked, identical monadic
+contexts. It, in conjuction with \texttt{pure} is sufficient to
+characterize a monad the same way that $\bindOp$ does since either one
+can be implemented in terms of the other, see
+figure~\ref{fig:join-bind-equivalence}.
+
+In case of the \texttt{Impure} constructor the continuation
+(\texttt{Free f a}) is contained in a layer of the effect functor
+\texttt{f} meaning that proceeding with the computations requires
+execution of one instance of the effect. Only then is an
+interpretation of the inner (later) computation possible, including
+the effects used later in the computation. This ensures effects are
+executed in the same order that they are used in, in the program.
+
+Using this data structure removes the need define a \Monad{} instance
+for the effect type \texttt{f}, as the free monad is a true \Monad{}
+for \emph{any} \Functor{} \texttt{f}, see
+figure~\ref{fig:free-monad-monad-instance}, this also means all the
+useful combinators defined for monads are available to an effect
+system defined like this. Effects are entirely delegated to the
+functor \texttt{f} allowing completely independent and different kinds
+of effect systems to be implemented using \texttt{Free}.
+
+To run a computation expressed in a free monad effect system is done
+by a function typically called an \emph{interpreter}. This interpreter
+implements how the effects should be handled in a certain
+environment. One additional advantage of using an interpreter is that
+effects can be handled differently depending on the concrete
+interpreter. They can even run in different environments entirely
+without requiring a change in the computations code.
+
+\begin{figure}
+  \begin{lstlisting}
+    data Console a
+      = ReadLine (String -> a)
+      | WriteLine String a
+
+    instance Functor Console where
+      fmap f (ReadLine cont) = ReadLine $ fmap f cont
+      fmap f (WriteLine str a) = WriteLine str $ f a
+
+    type ConsoleM = Free Console
+      
+    readLine :: ConsoleM String
+    readLine = Impure (ReadLine id)
+
+    writeLine :: String ConsoleM ()
+    writeLine str = Impure (WriteLine str ())
+
+    interpretIO :: ConsoleM a -> IO a
+    interpretIO (Pure a) = pure a
+    interpretIO (Impure eff) =
+      case eff of
+        ReadLine f -> IO.readLine >>= interpretIO . f
+        WriteLine str cont = do
+          putStrLn str
+          interpretIO cont
+        
+    interpretPure :: [String] -> ConsoleM a
+                  -> (a, [String])
+    interpretPure lines cio = go lines [] cio
+      where
+        go _ outLines (Pure v) = (v, reverse outLines)
+        go inLines (Impure eff) =
+          case eff of
+            ReadLine cont ->
+              go (tail inLines) outlines
+                $ cont (head inLines)
+            WriteLine str cont ->
+              go inLines (str:outLines) cont
+  \end{lstlisting}
+  \caption{Implementing a simple console I/O interaction using
+    \texttt{Free}}
+  \label{fig:console-io-example}
+\end{figure}
+
+An example can be seen in figure~\ref{fig:concole-io-example} where a
+simple console interaction is implemented using the free monad. Here
+two very different interpreters are provided. One where the
+interpretation happens in the IO monad and the two requests
+\texttt{ReadLine} and \texttt{WriteLine} are directly delegated to the
+usual I/O functions and a second one where the requests are served
+from a list of input strings and the written lines are again recorded
+in a list. This power of the free monad effects to be interpreted in
+different ways makes it ideal to implement mock interpreters for
+testing functions as well as making code more reusable in different
+scenarios. Transformers for instance do not offer the same degree of
+flexibility.
+
+\subsection{Composing Effects}
+
+\label{sec:simple-effect-composition}
+
+Decoupling the monad from its effect enables the composition of
+effects using functor composition. Two effect systems implemented
+using the free monad can be composed into an effect system
+implementing both types of effects by composing the two effect
+functors into a single one and using the result functor to
+parameterize the free monad. When handling the effect the two functors
+are decomposed again and the individual effects are dispatched to
+corresponding handlers.
+
+\begin{figure}
+  \begin{lstlisting}
+    data Sum f g a
+      = Left (f a)
+      | Right (g a)
+
+    instance (Functor f, Functor g)
+             => Functor (Sum f g) where
+      fmap f (Left fa) = Left $ fmap f fa
+      fmap f (Right ga) = Right $ fmap f ga
+  \end{lstlisting}
+  \caption{Then \texttt{Sum} functor}
+  \label{fig:sum-functor}
+\end{figure}
+
+In its simplest form this is done using the 

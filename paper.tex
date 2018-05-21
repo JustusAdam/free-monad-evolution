@@ -2,7 +2,16 @@
 
 \usepackage{booktabs} % For formal tables
 \usepackage[utf8]{inputenc}
+\usepackage{listings}
 
+\input{functions}
+
+\lstset{%
+  language=Haskell,
+  basicstyle=\footnotesize,
+  literate=
+  {->}{{$\rightarrow$}}1 {=>}{{$\Rightarrow$}}1 {>>=}{{$\bindOp$}}2 {>>}{{$\bindIgnOp$}}1
+}
 
 % Copyright
 %\setcopyright{none}
@@ -16,7 +25,6 @@
 
 \begin{document}
 \title{History and Evolution of Freedom for Monads}
-
 
 \author{Justus Adam}
 \affiliation{}
@@ -55,6 +63,7 @@ efficient, composable and versatile ambient interactions.
 \input{Chapters/Introduction}
 \input{Chapters/Monads}
 \input{Chapters/Transformers}
+\input{Chapters/Free}
 
 \bibliographystyle{ACM-Reference-Format}
 \bibliography{bibliography}
