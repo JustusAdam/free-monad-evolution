@@ -32,18 +32,20 @@
 
 
 \begin{abstract}
-Side effects are the sore spot for pure languages. The mathematical
-beauty of referential transparency has to be broken to allow crude and
-unpredictable outside interactions, such as network and filesystem
-accesses, that are necessary to write useful programs.
+Side effects are the sore spot for pure languages. The mathematical beauty of
+referential transparency is broken to allow outside interactions that are
+unpredictable and hard to reason about. Interactions such as network and
+filesystem access for example, that depend on invariants in the context they are
+executed in and may unexpectedly fail, but are necessary to write useful
+programs.
 
-Fortunately with the Monad an abstraction was discovered that allowed
+Fortunately, with the Monad, an abstraction was discovered that allowed
 safe and transparent, sequential interaction with an arbitrary ambient
 environment.
 
-Yet it too is flawed. Versatile though the Monad is, composing
-effects in a reusable fashion proved difficult and has performance
-implications which increase in severity as the granularity gets finer.
+Yet it too is flawed. Versatile though the Monad is, composing effects in a
+reusable fashion proved difficult and has performance implications which
+increase in severity as the granularity of effects gets finer.
 
 With the free monad we now finally not only obtain a way to compose
 arbitrary effects together in an efficient way but can also easily
@@ -53,7 +55,7 @@ constraints of its application.
 
 This paper provides an overview of the origins of the Monad, how its
 shortcomings lead to the invention of transformers, then the free
-monad, and eventually the freer monad, how free and freer monads work
+monad, and eventually the freer monad. How free and freer monads work
 and how they can be used to realise our collective dream of pure,
 efficient, composable and versatile ambient interactions.
 \end{abstract}
@@ -64,6 +66,7 @@ efficient, composable and versatile ambient interactions.
 \input{Chapters/Monads}
 \input{Chapters/Transformers}
 \input{Chapters/Free}
+\input{Chapters/Freer}
 
 \bibliographystyle{ACM-Reference-Format}
 \bibliography{bibliography}
