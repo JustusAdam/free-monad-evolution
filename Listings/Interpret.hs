@@ -8,10 +8,10 @@ import Free
 import SimpleOpenUnion
 
 interpret ::
-     (Functor sum, Functor f)
-  => (forall a. f a -> Free sum a)
-  -> Free (f :+: sum) a
-  -> Free sum a
+     (Functor effs, Functor f)
+  => (forall w. f w -> Free effs w)
+  -> Free (f :+: effs) a
+  -> Free effs a
 interpret _ (Pure a) = pure a
 interpret handle (Impure (Inr others)) =
   Impure $ fmap (interpret handle) others
@@ -19,10 +19,10 @@ interpret handle (Impure (Inl eff)) =
   join $ handle $ fmap (interpret handle) eff
 
 reinterpret ::
-     (Functor f, Functor g, Functor sum)
-  => (forall a. f a -> Free (g :+: sum) a)
-  -> Free (f :+: sum) b
-  -> Free (g :+: sum) b
+     (Functor f, Functor g, Functor effs)
+  => (forall a. f a -> Free (g :+: effs) a)
+  -> Free (f :+: effs) b
+  -> Free (g :+: effs) b
 reinterpret _ (Pure a) = pure a
 reinterpret handle (Impure (Inr others)) =
   Impure $ Inr $ fmap (reinterpret handle) others

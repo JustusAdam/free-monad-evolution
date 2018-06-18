@@ -47,39 +47,34 @@ type class \Functor{} displayed in figure~\ref{fig:functor-class}.
   \label{fig:join-bind-equivalence}
 \end{figure}
 
-The two constructors for the free monad represent the two
-characteristic functions of the \Monad{} in category theory,
-\texttt{pure} and \texttt{join}, the latter represented by the
-\texttt{Impure} constructor. The \texttt{join :: Monad m => m (m a) ->
-  m a} function allows flattening of two stacked, identical monadic
-contexts. It, in conjuction with \texttt{pure} is sufficient to
-characterize a monad the same way that $\bindOp$ does since either one
-can be implemented in terms of the other, see
-figure~\ref{fig:join-bind-equivalence}.
+The two constructors for the free monad represent the two characteristic
+functions of the \Monad{} in category theory, \texttt{pure} and \texttt{join},
+the latter represented by the \texttt{Impure} constructor. The \texttt{join ::
+  Monad m => m (m a) -> m a} function allows flattening of two stacked,
+identical monadic contexts. It, in conjuction with \texttt{pure} is sufficient
+to characterize a monad the same way that $\bindOp$ does since either one can be
+implemented in terms of the other, see figure~\ref{fig:join-bind-equivalence}.
 
-In case of the \texttt{Impure} constructor the continuation
-(\texttt{Free f a}) is contained in a layer of the effect functor
-\texttt{f} meaning that proceeding with the computations requires
-execution of one instance of the effect. Only then is an
-interpretation of the inner (later) computation possible, including
-the effects used later in the computation. This ensures effects are
-executed in the same order that they are used in, in the program.
+In case of the \texttt{Impure} constructor the continuation (\texttt{Free f a})
+is contained in a layer of the effect functor \texttt{f} meaning that proceeding
+with the computations requires execution of one instance of the effect. Only
+then is an interpretation of the inner (later) computation possible, including
+the effects used later in the computation. This ensures effects are executed in
+the same order that they are used in, in the program.
 
-Using this data structure removes the need define a \Monad{} instance
-for the effect type \texttt{f}, as the free monad is a true \Monad{}
-for \emph{any} \Functor{} \texttt{f}, see
-figure~\ref{fig:free-monad}, this also means all the
-useful combinators defined for monads are available to an effect
-system defined like this. Effects are entirely delegated to the
-functor \texttt{f} allowing completely independent and different kinds
-of effect systems to be implemented using \texttt{Free}.
+Using this data structure removes the need define a \Monad{} instance for the
+effect type \texttt{f}, as the free monad is a true \Monad{} for \emph{any}
+\Functor{} \texttt{f}, see figure~\ref{fig:free-monad}, this also means all the
+useful combinators defined for monads are available to an effect system defined
+like this. Effects are entirely delegated to the functor \texttt{f} allowing
+completely independent and different kinds of effect systems to be implemented
+using \texttt{Free}.
 
-To run a computation expressed in a free monad effect system is done
-by a function typically called an \emph{interpreter}. This interpreter
-implements how the effects should be handled in a certain
-environment. One additional advantage of using an interpreter is that
-effects can be handled differently depending on the concrete
-interpreter. They can even run in different environments entirely
+To run a computation expressed in a free monad effect system is done by a
+function typically called an \emph{interpreter}. This interpreter implements how
+the effects should be handled in a certain environment. One additional advantage
+of using an interpreter is that effects can be handled differently depending on
+the concrete interpreter. They can even run in different environments entirely
 without requiring a change in the computations code.
 
 \begin{figure}
@@ -89,31 +84,28 @@ without requiring a change in the computations code.
   \label{fig:console-io-example}
 \end{figure}
 
-An example can be seen in figure~\ref{fig:console-io-example} where a
-simple console interaction is implemented using the free monad. Here
-two very different interpreters are provided. One where the
-interpretation happens in the IO monad and the two requests
-\texttt{ReadLine} and \texttt{WriteLine} are directly delegated to the
-usual I/O functions and a second one where the requests are served
-from a list of input strings and the written lines are again recorded
-in a list. This power of the free monad effects to be interpreted in
-different ways makes it ideal to implement mock interpreters for
-testing functions as well as making code more reusable in different
-scenarios. Transformers for instance do not offer the same degree of
-flexibility.
+An example can be seen in figure~\ref{fig:console-io-example} where a simple
+console interaction is implemented using the free monad. Here two very different
+interpreters are provided. One where the interpretation happens in the IO monad
+and the two requests \texttt{ReadLine} and \texttt{WriteLine} are directly
+delegated to the usual I/O functions and a second one where the requests are
+served from a list of input strings and the written lines are again recorded in
+a list. This power of the free monad effects to be interpreted in different ways
+makes it ideal to implement mock interpreters for testing functions as well as
+making code more reusable in different scenarios. Transformers for instance do
+not offer the same degree of flexibility.
 
 \subsection{Composing Effects}
 
 \label{sec:simple-effect-composition}
 
-Decoupling the monad from its effect enables the composition of
-effects using functor composition. Two effect systems implemented
-using the free monad can be composed into an effect system
-implementing both types of effects by composing the two effect
-functors into a single one and using the result functor to
-parameterize the free monad. When handling the effect the two functors
-are decomposed again and the individual effects are dispatched to
-corresponding handlers.
+Decoupling the monad from its effect enables the composition of effects using
+functor composition. Two effect systems implemented using the free monad can be
+composed into an effect system implementing both types of effects by composing
+the two effect functors into a single one and using the result functor to
+parameterize the free monad. When handling the effect the two functors are
+decomposed again and the individual effects are dispatched to corresponding
+handlers.
 
 \begin{figure}
   \lstinputlisting[firstline=5,lastline=9]{Listings/SimpleOpenUnion.hs}
@@ -216,6 +208,12 @@ pure value with \texttt{run}, both can be seen in figure \ref{fig:interpreting}.
   \label{fig:interpreting}
 \end{figure}
 
+\begin{figure}
+  \lstinputlisting[firstline=9]{Listings/Reader.hs}
+  \caption{The reader effect and its interpretation}
+  \label{fig:reader-effect}
+\end{figure}
+
 It may not seem immediately obvious, but this retains the same flexibility we
 saw earlier in the \texttt{Free} monad whereby effects could be interpreted
 differently based on context. In this case it is even easier to do this. For
@@ -273,7 +271,9 @@ ubiquitously in the implementation. This also means that the performance
 degrades as the number of different effect types grows. Smaller effect
 granularity, which leads to greater reusability and makes it easier to reason
 about effects, is punished by degrading performance, an undesirable effect.
-Furthermore the $\bindOp{}$ implementation also recurses into the continuation on
-every bind, leading to bad asymptotic performance. The next section will explore
-an alternative way to implement the free monad and open union to improve the
-performance.
+Furthermore the $\bindOp{}$ implementation also recurses into the continuation
+on every bind, leading to bad asymptotic performance.
+Section~\ref{sec:bind-performance} will explore an alternative way to implement
+the free monad to improve the performance of bind.
+Section~\ref{sec:better-open-union} shows ways to implement a more efficient
+open union.

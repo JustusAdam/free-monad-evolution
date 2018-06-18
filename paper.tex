@@ -3,6 +3,7 @@
 \usepackage{booktabs} % For formal tables
 \usepackage[utf8]{inputenc}
 \usepackage{listings}
+\usepackage[inline]{enumitem}
 
 \input{misc/functions}
 
@@ -11,6 +12,7 @@
   basicstyle=\footnotesize,
   literate=
   {->}{{$\rightarrow$}}1 {=>}{{$\Rightarrow$}}1 {>>=}{{$\bindOp$}}2 {>>}{{$\bindIgnOp$}}1
+  {<-}{{$\leftarrow$}}1
 }
 
 % Copyright
@@ -39,25 +41,23 @@ filesystem access for example, that depend on invariants in the context they are
 executed in and may unexpectedly fail, but are necessary to write useful
 programs.
 
-Fortunately, with the Monad, an abstraction was discovered that allowed
-safe and transparent, sequential interaction with an arbitrary ambient
-environment.
+Fortunately, with the Monad, an abstraction was discovered that allowed safe and
+transparent, sequential interaction with an arbitrary ambient environment.
 
 Yet it too is flawed. Versatile though the Monad is, composing effects in a
 reusable fashion proved difficult and has performance implications which
 increase in severity as the granularity of effects gets finer.
 
-With the free monad we now finally not only obtain a way to compose
-arbitrary effects together in an efficient way but can also easily
-implement effects via transformation into other effects and even
-implement the same effect in different ways depending on needs and
-constraints of its application.
+With the free monad we now finally not only obtain a way to compose arbitrary
+effects together in an efficient way but can also easily implement effects via
+transformation into other effects and even implement the same effect in
+different ways depending on needs and constraints of its application.
 
 This paper provides an overview of the origins of the Monad, how its
-shortcomings lead to the invention of transformers, then the free
-monad, and eventually the freer monad. How free and freer monads work
-and how they can be used to realise our collective dream of pure,
-efficient, composable and versatile ambient interactions.
+shortcomings lead to the invention of transformers, then the free monad, and
+eventually the freer monad. How free and freer monads work and how they can be
+used to realise our collective dream of pure, efficient, composable and
+versatile ambient interactions.
 \end{abstract}
 
 \maketitle
@@ -66,6 +66,8 @@ efficient, composable and versatile ambient interactions.
 \input{Chapters/Monads}
 \input{Chapters/Transformers}
 \input{Chapters/Free}
+\input{Chapters/BetterOpenUnion}
+\input{Chapters/BindPerformance}
 \input{Chapters/Freer}
 
 \bibliographystyle{ACM-Reference-Format}
