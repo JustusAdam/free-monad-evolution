@@ -1,4 +1,5 @@
 {-# LANGUAGE LambdaCase #-}
+
 module ConsoleIO where
 
 import Free
@@ -22,9 +23,10 @@ writeLine :: String -> ConsoleM ()
 writeLine str = Impure (WriteLine str (pure ()))
 
 interpretIO :: ConsoleM a -> IO a
-interpretIO = iterM $ \case
-  ReadLine f -> getLine >>= f
-  WriteLine line cont -> putStrLn line >> cont
+interpretIO =
+  iterM $ \case
+    ReadLine f -> getLine >>= f
+    WriteLine line cont -> putStrLn line >> cont
 
 interpretPure :: [String] -> ConsoleM a -> (a, [String])
 interpretPure lines cio = go lines [] cio
@@ -34,5 +36,4 @@ interpretPure lines cio = go lines [] cio
       case eff of
         ReadLine cont ->
           go (tail inLines) outLines $ cont (head inLines)
-        WriteLine str cont ->
-          go inLines (str : outLines) cont
+        WriteLine str cont -> go inLines (str : outLines) cont

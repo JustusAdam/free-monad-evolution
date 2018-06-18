@@ -4,12 +4,13 @@
 \usepackage[utf8]{inputenc}
 \usepackage{listings}
 \usepackage[inline]{enumitem}
+\usepackage{FiraMono}
 
 \input{misc/functions}
 
 \lstset{%
   language=Haskell,
-  basicstyle=\footnotesize,
+  basicstyle=\scriptsize\ttfamily,
   literate=
   {->}{{$\rightarrow$}}1 {=>}{{$\Rightarrow$}}1 {>>=}{{$\bindOp$}}2 {>>}{{$\bindIgnOp$}}1
   {<-}{{$\leftarrow$}}1
@@ -26,7 +27,8 @@
 %\setcopyright{cagovmixed}
 
 \begin{document}
-\title{History and Evolution of Freedom for Monads}
+\title{Why Data is the Better Monad}
+\subtitle{Using Freedom to Great Effect}
 
 \author{Justus Adam}
 \affiliation{}
@@ -69,6 +71,8 @@ versatile ambient interactions.
 \input{Chapters/BetterOpenUnion}
 \input{Chapters/BindPerformance}
 \input{Chapters/Freer}
+\input{Chapters/AlternativeSystems}
+\input{Chapters/Conclusion}
 
 \bibliographystyle{ACM-Reference-Format}
 \bibliography{bibliography}

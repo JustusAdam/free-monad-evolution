@@ -22,10 +22,6 @@ iter :: Functor f => (f a -> a) -> Free f a -> a
 iter _ (Pure a) = a
 iter handle (Impure fa) = handle $ fmap (iter handle) fa
 
-iterM ::
-     (Monad m, Functor f)
-  => (f (m a) -> m a)
-  -> Free f a
-  -> m a
+iterM :: (Monad m, Functor f) => (f (m a) -> m a) -> Free f a -> m a
 iterM handle (Pure a) = pure a
 iterM handle (Impure fa) = handle $ fmap (iterM handle) fa

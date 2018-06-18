@@ -30,13 +30,13 @@ The most popular solution currently is the one implemented by the
 \texttt{mtl}\cite{mtl} and \texttt{transformers}\cite{transformers} library and
 it revolves around using stacks of so called \textbf{monad transformers} and
 \textbf{monad classes}. The approach was inspired by a paper from Mark P.
-Jones~\cite{transformer-inspiration} \textbf{Describe paper!!}. The idea is
-that, rather than defining terminal monads, such as \ReaderM{}, the defined
-monad is parameterized by an additional \emph{inner monad} to which additional
-effects can be delegated. The resulting structure is called a \emph{transformer}
-as it transforms a given monad by adding an additional type of effect.
-Transformers are typically named after their effect with a capital ``T''
-prepended. Thus the transformer for the \ReaderM{} monad would be \ReaderT{}.
+Jones~\cite{transformer-inspiration}. The idea is that, rather than defining
+terminal monads, such as \ReaderM{}, the defined monad is parameterized by an
+additional \emph{inner monad} to which other effects can be delegated. The
+resulting structure is called a \emph{transformer} as it transforms a given
+monad by adding an additional type of effect. Transformers are typically named
+after their effect with a capital ``T'' prepended. Thus the transformer for the
+\ReaderM{} monad would be \ReaderT{}.
 
 This process of wrapping a monad with a transformer can be done arbitrarily
 often as the result of wrapping a monad with a transformer again produces a
@@ -70,9 +70,10 @@ effect as provided by the \StateM{} monad in
 figure~\ref{fig:monad-class-example}. Transformers responsible for handling the
 effect are then made instances of this class and implement it accordingly.
 Additionally all other transformers are also made instances of this class but
-only \texttt{lift} the effect up the stack. Thus when such an effect is used it
-automatically propagates up the stack until it reaches the transformer capable
-of handling it.
+use \texttt{lift} to delegate the effect up the stack. Thus when such an effect
+is used it automatically propagates up the stack until it reaches the
+transformer capable of handling it (should one exist\footnote{Should no capable
+  handler exist the type checker will report a class instance resolution error.}).
 
 \begin{figure}
   \begin{lstlisting}
@@ -84,15 +85,15 @@ of handling it.
   \label{fig:monad-class-example}
 \end{figure}
 
-An additional advantage of using monad classes is that computations using the
-effects can be defined only in terms of the set of effects used rather than the
-concrete monad it operates in. As a result they can be reused in entirely
-different monad stacks without modification of the code. An example of this can
-be seen in figure~\ref{fig:monad-class-poly}. Whereas the second function,
-\texttt{writeState1}, can only be used in the explicit \StateT{}, \WriterT{}
-stack, the first function, \texttt{writeState}, could also be used in a stack
-where the two transformers are reversed, or if it were wrapped by additional
-transformers.
+An additional advantage of monad classes is that effectful computations can be
+defined solely in terms of the set of effects it uses, rather than the concrete
+monad it operates in. As a result they can be reused in entirely different monad
+stacks without modification of the code so long as it satisfies the same effect
+interface. An example of this can be seen in figure~\ref{fig:monad-class-poly}.
+Whereas the second function, \texttt{writeState1}, can only be used in the
+explicit \StateT{}, \WriterT{} stack, the first function, \texttt{writeState},
+could also be used in a stack where the two transformers are reversed, or if it
+were wrapped by additional transformers.
 
 \begin{figure}
   \begin{lstlisting}
@@ -113,8 +114,8 @@ transformers.
 
 While this provides a clean interface for interacting with the various effects
 in our stack, using the class-based effect functions like \texttt{get}, it also
-poses some issues. In the interface definition for the \StateM{} effect for
-instance the type of state, which can be handled, is fixed to the monad, as
+poses some issues. In the interface definition for the \StateM{} effect, for
+instance, the type of state, which can be handled, is fixed to the monad, as
 expressed by the \texttt{m $\rightarrow$ s} functional constraint. This means a
 stack can only ever handle the state effect for \emph{one single type of state
   $s$}. Adding additional \StateT{} transformer will shadow any \StateM{} effect
@@ -124,12 +125,12 @@ class~\footnote{Theoretically it is still reachable using a combination of
   reintroduces the issues from before that prompted the addition of monad
   classes in the first place.}. This becomes particularly troublesome when
 libraries are used that implement certain interactions in terms of effects on a
-specific type, like \ReaderM{} on a specific type \texttt{t} but the monad one
-wants to use this in already is a \ReaderM{}, but on some \emph{other} type. In
-these cases it becomes rather tedious to wrap and unwrap every library
-interaction with another \ReaderT{} to shadow ones own \ReaderM{} effect. This
-problem can be eased using lenses but requires that the library be defined both
-in terms of lenses as well as monad classes.
+specific type, like \ReaderM{} on a specific type \texttt{t} but the monad it is
+supposed to run in is already a \ReaderM{} for some \emph{other} type. In these
+cases it becomes rather tedious to wrap and unwrap every library interaction
+with another \ReaderT{} to shadow ones own \ReaderM{} effect. This problem can
+be eased using lenses but requires that the library be defined both in terms of
+lenses as well as monad classes.
 
 Monad class instances themselves also pose issues. In general it is beneficial
 to define custom effects in terms of new monad classes and transformers. This
@@ -146,7 +147,12 @@ maximum amount of composability. In case of GHC some of these can be
 automatically derived by the compiler, but only when \texttt{newtype} wrapping
 is used. When the granularity of the custom effects is decreased, that is they
 are broken into smaller and smaller pieces to achieve modularity, more and more
-of such definitions and instances are required, bloating the code.
+of such definitions and instances are required, bloating the code.\footnote{One
+  particularly good example of this I believe is the \texttt{monad-logger}
+  library, paticularly this module
+  https://github.com/snoyberg/monad-logger/blob/master/Control/Monad/Logger.hs
+  where they even resort to the use of preprocessor macros to reduce the code
+  duplication.}
 
 A truly extensible system should not require changes to existing effects in
 order to incorporate new ones. Ideally we would only have to define our effect

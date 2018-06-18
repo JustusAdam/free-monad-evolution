@@ -4,7 +4,7 @@
 
 Purity, often also called referential transparency, is the property of
 a function to always produce the same result when called with the same
-arguments. It is a very desirable property as it makes it considerably
+arguments. It is a desirable property as it makes it considerably
 easier to reason about the behaviour of a program, particularly with
 respects to refactoring. But it also allows optimisations, such as
 common subexpression elimination and memoization.
@@ -18,28 +18,24 @@ performed, from this object oriented programming was conceived where
 each function, or method, carries around the implicit environment of
 an object.
 
-To perform the aforementioned tasks many programming languages opt to
-sacrifice purity and allow arbitrary side effects in any function. The
-designers of the Haskell programming language however found a way to
-enable side effects in programs without sacrificing purity.
-\textbf{Monads}, in the Haskell sense, are a class of types that
-describe some sort of environment, which can be interacted with. The
-concrete interactions a particular monad allows differ but what they
-have in common is a notion of sequentiality, encoded with the
-\textbf{bind} operator (\texttt{($\bindOp$) :: Monad m $\Rightarrow$ m
-  a $\rightarrow$ (a $\rightarrow$ m b) $\rightarrow$ m b}), which
-connects an action performed with the monad and a continuation that
-requires the result of this interaction, and the ability to embed pure
-values into the monad (\texttt{pure :: Monad m $\Rightarrow$ a
+To perform the aforementioned tasks many programming languages opt to sacrifice
+purity and allow arbitrary side effects in any function. The designers of the
+Haskell programming language however found a way to enable side effects in
+programs without sacrificing purity. \textbf{Monads}, in the Haskell sense, are
+a class of types that describe some sort of environment, which can be interacted
+with. The concrete interactions a particular monad allows differ but they have a
+common notion of sequentiality, encoded with the \textbf{bind} operator
+(\texttt{($\bindOp$) :: Monad m $\Rightarrow$ m a $\rightarrow$ (a $\rightarrow$
+  m b) $\rightarrow$ m b}), which connects an action performed with the monad
+and a continuation that requires the result of this interaction, and the ability
+to embed pure values into the monad (\texttt{pure :: Monad m $\Rightarrow$ a
   $\rightarrow$ m a}).
 
-Of particular importance is the sequentiality of actions that is
-enforced by $\bindOp$. Since the left hand argument is a continuation
-the right hand action must be performed before the program can advance
-as the left hand function requires its result (though it is not
-required to use it). This structure allows ordering of side effects
-that may or may not produce actual results, such as writing to a table
-in a database.
+Of particular importance is the sequentiality of actions that is enforced by
+$\bindOp$. Since the left hand argument is a continuation the right hand action
+must be performed before the program can advance. This structure enforces an
+order to the execution of side effects whether or not these actions produce
+actual results, such as writing to a table in a database.
 
 The Monad proved to be a very successful concept in describing
 sequential interactions with ambient environments and thus many

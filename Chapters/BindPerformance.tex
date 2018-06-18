@@ -1,6 +1,6 @@
 \section{Asymptotic performance of $\bindOp$}
 
-
+\label{sec:bind-performance}
 
 As mentioned before the asymptotic performance of $\bindOp$ for the
 \texttt{Free} monad is not good. As can be seen in figure~\ref{fig:free-monad}
@@ -10,7 +10,7 @@ use of $\bindOp$ the entire tree must be traversed once.
 
 \subsection{Better asymptotic performance using continuation passing}
 
-\ref{sec:performance-with-codensity}
+\label{sec:performance-with-codensity}
 
 This problem is akin to appending to singely linked lists where the entire list
 has to be traversed to find the final pointer and append. A solution to this
@@ -46,7 +46,6 @@ much cheaper operation in Haskell.
   \caption{The codensity monad}
   \label{fig:codensity-monad}
 \end{figure}
-\label{sec:bind-performance}
 
 \subsection{Improving interpreter performance using type aligned sequences}
 
@@ -70,6 +69,12 @@ growing) effect chain. The crucial point where this traversal is performed can
 be seen in figure~\ref{fig:ee-handle-relay} where the continuation is not simply
 appended, as was the case in figure~\ref{fig:codensity-monad}, but traverses the
 entire stack, similar to figure~\ref{fig:free-monad}.
+
+\begin{figure}
+  \lstinputlisting{Listings/EEHandleRelay.hs}
+  \caption{Relay function as implemented in~\cite{extensible-effects}}
+  \label{fig:ee-handle-relay}
+\end{figure}
 
 The principal problem her is that new continuations, in the form on lambda
 functions are created and partial applications are pushed into the functor. This

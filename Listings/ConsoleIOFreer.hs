@@ -7,9 +7,7 @@ data ConsoleIO a where
   WriteLine :: String -> ConsoleIO ()
 
 runConsoleIO ::
-     MonadIO (Eff effs)
-  => Eff (ConsoleIO :+: effs) a
-  -> Eff effs a
+     MonadIO (Eff effs) => Eff (ConsoleIO :+: effs) a -> Eff effs a
 runConsoleIO =
   interpret $ \case
     ReadLine -> liftIO getLine

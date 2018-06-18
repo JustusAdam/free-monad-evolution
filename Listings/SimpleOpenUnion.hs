@@ -1,5 +1,6 @@
 {-# LANGUAGE FlexibleInstances, MultiParamTypeClasses,
   TypeOperators #-}
+
 module SimpleOpenUnion where
 
 data (f :+: g) a

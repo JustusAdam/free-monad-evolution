@@ -18,13 +18,9 @@ data State s a
   deriving (Functor)
 
 runState ::
-     Functor sum
-  => s
-  -> Free (State s :+: sum) a
-  -> Free sum (a, s)
+     Functor sum => s -> Free (State s :+: sum) a -> Free sum (a, s)
 runState s (Pure a) = pure (a, s)
-runState s (Impure (Inr other)) =
-  Impure $ fmap (runState s) other
+runState s (Impure (Inr other)) = Impure $ fmap (runState s) other
 runState s (Impure (Inl eff)) =
   case eff of
     Get cont -> runState s $ cont s
@@ -40,16 +36,12 @@ liftIO :: (IO :<: sum, Functor sum) => IO a -> Free sum a
 liftIO = Impure . inj . fmap pure
 
 interpretConsolePure ::
-     [String]
-  -> Free (Console :+: Identity) a
-  -> (a, [String])
+     [String] -> Free (Console :+: Identity) a -> (a, [String])
 interpretConsolePure strs =
   run .
-  fmap (second (reverse . snd)) .
-  runState (strs, []) . reinterpret f
+  fmap (second (reverse . snd)) . runState (strs, []) . reinterpret f
   where
-    f :: Console a
-      -> Free (State ([String], [String]) :+: Identity) a
+    f :: Console a -> Free (State ([String], [String]) :+: Identity) a
     f (ReadLine cont) = do
       (inLines, outLines) <- get
       put (tail inLines, outLines :: [String])
@@ -63,5 +55,4 @@ interpretConsoleIO :: Free (Console :+: IO) a -> IO a
 interpretConsoleIO = runM . interpret f
   where
     f (ReadLine cont) = cont <$> liftIO getLine
-    f (WriteLine str cont) =
-      liftIO (putStrLn str) >> pure cont
+    f (WriteLine str cont) = liftIO (putStrLn str) >> pure cont

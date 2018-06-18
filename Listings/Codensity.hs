@@ -13,8 +13,7 @@ newtype Codensity m a = Codensity
 instance Monad (Codensity m) where
   return v = Codensity ($ v)
   c >>= f =
-    Codensity $ \k ->
-      runCodensity c $ \v -> runCodensity (f v) k
+    Codensity $ \k -> runCodensity c $ \v -> runCodensity (f v) k
 
 lowerCodensity :: Applicative f => Codensity f a -> f a
 lowerCodensity (Codensity f) = f pure

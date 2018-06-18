@@ -1,0 +1,148 @@
+\section{Alternative Effect Systems}
+
+\label{sec:alternative-systems}
+
+Effects are a common topic in the field of pure functional programming
+languages. Particularly the recent years have enjoyed the development of several
+new effect systems with a similar aim to the freer monads. Namely providing
+extensible and performant effect systems.
+
+\subsection{Handlers in Action}
+
+\citeauthor{hia}~\cite{hia} Developed a an alternative system, building on free
+monads, similar to the one from \citeauthor{freer}~\cite{freer}. The system,
+called ``Handlers in Action'' (HIA), also leverages an augmented free monad, see
+figure~\ref{fig:freer-monad}, the performance of which is enhanced by using the
+continuation monad \texttt{Cont}, a construct which is very similar to the
+\texttt{Codensity} monad as described before and fulfils a similar role here.
+Whereas freer dealt with suites of effects, \texttt{ConsoleIO} for instance is
+a suite consisting of two effects, \texttt{ReadLine} and \texttt{WriteLine},
+``Handlers in Action'' defines every effect individually. Every effect thus
+becomes its own top-level construct. Handler functions can choose which set of
+effects to handle, as well as whether additional effects, which are delegated,
+should be allowed or not. Handlers that allow additional effects are called
+``shallow'' and the default case for freer. Handlers do not allow additional
+effects are called ``deep'' handlers. Deep handlers can provide performance
+benefits due to fewer dispatches.
+
+To implement this in a user friendly way \citeauthor{hia} leverages the code
+generation tool ``Template Haskell'' to generates type classes, constraints and
+data structures for effects, handlers and functions using effects.
+
+In this approach no open union is needed. Instead each effect is directly paired
+with its handler via a \texttt{Handles} type class. Since each handler function
+is member of a type class it will be a static top level value, thus reducing the
+memory overhead because no additional \texttt{Union} value is needed as well as
+improving the speed slightly since not every handler attempts to handle every
+effect, but only the appropriate handler handles its own effect. However this
+depends largely on whether or not the compiler inlines the instance
+dictionaries.
+
+In the performance evaluation in \cite{freer} the HIA system performed on-par or
+better than freer. In fact for the simple example of the state monad it even
+outperformed MTL. As far as I can tell this is due to the fact that, unlike
+freer, HIA uses more builtin structures, like the continuation monad and type
+classes. These structures are more transparent to the compiler, and have been
+around for a long time, thus enjoy more dedicated optimisations. Type level
+sequences and generic unions, as used by freer, are opaque to a large degree and
+recent additions to Haskell and hence harder to optimise by the compiler.
+
+In addition to Haskell HIA also provides implementations for Racket and OCaml.
+Due to the less powerful type systems of these two languages the implementation
+of the handlers is slightly different, however the semantics of the ensuing
+program are similar. They use runtime tracking of handler functions in scope,
+which is a more dynamic approach. An advantage of this system is that new
+operations can be defined at runtime which simplifies certain tasks. One such
+example (taken from the paper~\cite{hia}) is the representation of mutable
+references by a set of dynamically created \texttt{Put} and \texttt{get}
+operations.
+
+\subsection{Algebraic Effects in Idris}
+
+Certain of the features of the effect system depend on the language used to
+implement it. The Idris~\cite{idris}\cite{idris-paper} programming language is
+fully dependently typed and thus more powerful than Haskell. One result of this
+is that effects can be even more finely disambiguated. Whereas in freer and
+extensible effects several effects of a polymorphic type can be disambiguated in
+the same computation, see section~\ref{sec:freer}, in the effects system
+implemented by
+\citeauthor{algebraic-effects-idris}~\cite{algebraic-effects-idris} in Idris,
+called ``Effects'', even effects instantiated with the exact same types can be
+disambiguated by means of adding labels to a particular effect. Subsequently the handlers
+are selected based on the label, not the type alone. An example of how this
+proves useful is if a computation were to carry two counters which are
+incremented separately. Rather than having to redefine an effect the same
+handler can be used and a label to disambiguate which counter is to be
+incremented.
+
+Another key difference in Idris is that effect handlers are defined via type
+classes, similar to ``Handlers in Action'', as opposed to the user-defined
+handler compositions of freer. In Idris case handlers are parameterised over a
+context monad in addition to the effect itself. This allows it to be more
+versatile and implement different handlers for different contexts. A type class
+based approach can reduce the amount of code necessary to run effects, it does
+however increase the amount of boilerplate necessary to run handlers in custom
+contexts, such as when mocking for testing.\footnote{The reason is that in order
+  to choose different handlers a newtype has to be instantiated as base monad
+  and instances provided for every effect needed. Whereas in freer predefined
+  handlers can simply be composed anew.}
+
+The effect type in Idris is also more powerful when it comes to the type of
+interactions that can be described by it. Effects are parameterised over a type
+of input resource and a type of output resource. These are type level constructs
+that live in the environment of the effect monad. An example from the paper by
+Brady~\cite{algebraic-effects-idris} is a \texttt{FileIO} effect which allows
+reading and writing to files. Rather than returning some kind of file handle
+when opening the file and writing to the handle the \texttt{OpenFile} action
+instead records the file in the computation environment including the mode of
+opening. Neither reading nor writing takes a handle as argument, but instead
+retrieves the resource from the environment automatically. Similarly close file
+retrieves the ambient value but also removes the resource type from the
+environment. As a result a closed file can never be written to or read from,
+since the type checker detects that this resource was removed from the
+environment at compile time. Similarly reading and writing cannot occur on files
+opened with the incorrect mode, due to the mode also being recorded in the
+environment of the effect. To open several files in the same computation the
+aforementioned labels are used to disambiguate the effect targets.
+
+A downside of the Idris approach is that the effect monad is no longer a monad
+conforming to the \texttt{Monad} type class, because effects may change the the
+environment resources and thus the type of the computation. As an alternative
+Idris supports operator overloading to leverage the convenient \texttt{do}
+notation regardless. Unlike previous approaches this effect system does not use
+a simple augmented free monad but a much richer data structure that encodes
+several other actions in addition to the two monadic actions \texttt{pure} and
+$\bindOp$. This is due to the larger feature set of ``Effects'' compared to the
+systems mentioned previously.
+
+\subsection{PureScript}
+
+One honourable mention at this point goes to the PureScript~\cite{purescript}
+language. PureScript is a pure functional language, similar to Haskell, that
+compiles to JavaScript. JavaScript has a lot of different built-in effects, such
+as console I/O, DOM interaction, Websockets, Browser history modification, and
+even more when NodeJS is used, adding process spawning, file interactions et
+cetera. To deal with such myriad of effects, while avoiding the IO-Monad
+problem, as it exists in Haskell, PureScript has built in support for a an
+extensible effects monad (\texttt{Eff}).
+
+An unfortunate issue in Haskell is that all effects dealing with some kind of
+external API live in the monolithic \texttt{IO} monad. A signature \texttt{IO a}
+does indicate that \emph{some} kind of effect occurs, but not which. It could be
+reading a file, or launch missiles, an infamous example of how arbitrary effects
+are from the Haskell community. PureScript addresses this by providing the
+\texttt{Eff} monad as a built-in which is parameterised over an extensible
+record of effects. The interface is very similar to the freer monad from the
+previous section. The difference being that all effects in PureScripts
+\texttt{Eff} are native effects. Each effect type is an untouchable empty native
+type with no runtime representation and it carries no data. Similarly the
+tagging of the imported native functions with effects is done arbitrarily by the
+user and no alternative, ``pure'' implementations directly in PureScript are
+possible.
+
+However the use \texttt{Eff} as a built-in structure as well as using an
+extensible record to track the composition of effect types means that all of the
+code using \texttt{Eff} can be optimised to such a degree that no overhead
+remains at runtime. Both effect resolution and $\bindOp$ inlining can be done at
+compile time. Furthermore having built-in extensible records result in a concise
+syntax.

@@ -78,9 +78,30 @@ remapped to standard effects which can be handled generically, such as the
 \texttt{State}, \texttt{Reader} or \texttt{Error} effect. The combination of
 these features mean that effects are quick and easy to define. This makes it
 feasible to implement systems with a much smaller finer effect granularity,
-which in turn makes the effect reusable, easier to reason about and test.
-An important contributing factor for the viability of this finely granular
-approach is the improved performance characteristics as described in the last
-section. Due to the linear scaling of freer monads finely granular effect
-systems can be employed without having to expect massive performance penalty as
-would be the case when using MTL.
+which in turn makes the effect reusable, easier to reason about and test. An
+important contributing factor for the viability of this finely granular approach
+is the improved performance characteristics as described in the last section.
+Due to the linear scaling of freer monads finely granular effect systems can be
+employed without having to expect massive performance penalty as would be the
+case when using MTL.
+
+An additional feature of the interface of the two systems described in this and
+the previous section is that multiple of the same effect can be combined in the
+same computation. Namely parameterised effects, such as \texttt{State s}, which
+is parameterised over the concrete state type \texttt{s} can occur multiple
+times in the effect set, so long as it handles a different \texttt{s}. Thus a
+computation of type \texttt{Eff [State Int, State String] a} is possible and
+will compute as would be expected. If multiple of identically instantiated
+effects are present, for instance \texttt{Eff [State Int, State Int] a}, the
+effect closer to the head of the list is handled and used first, then the
+latter. This is seldom used in an actual computation, but may occur due to a
+handler pushing a new state layer onto the computation, which is subsequently
+handles. This type of delegation is highly useful when dealing with complex
+custom effects and thus a feature. One slight problem with allowing multiple
+types of the same effect is that it becomes more common to have to annotate
+polymorphic functions such as \texttt{put} and \texttt{get} with concrete types
+to disambiguate the used state type, even if according to the constraints of the
+function using it, only one type of state is in scope. However it does afford
+finer granularity of effects and composability. Furthermore since defining
+custom effects that need no disambiguation is so simple with these systems, it
+should not pose problematic.

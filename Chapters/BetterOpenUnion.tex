@@ -40,6 +40,13 @@ similarly to closed unions by coercing the concrete value to an untyped one and
 pairing it with a tag to discern its type at runtime. The first published
 version of this technique can be seen in figure~\ref{fig:union-type}.
 
+\begin{figure}
+  \lstinputlisting{Listings/EfficientUnion.hs}
+  \caption{A single value open union based on reflection}\footnote{Slightly
+      simplified and with the \texttt{Member} class renamed for consistency.}
+  \label{fig:union-type}
+\end{figure}
+
 In its first instance the authors used the builtin reflection
 mechanism provided by the GHC compiler\cite{ghc}. It generates a runtime
 representation of a type called \texttt{TypeRep}. Each such \texttt{TypeRep}
