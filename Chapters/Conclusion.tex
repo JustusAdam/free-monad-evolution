@@ -1,30 +1,24 @@
 \section{Conclusion}
 
-Extensible effect systems have enjoyed a significant amount of attention by the
-scientific community in recent years. They provide means to write code which is
-very expressive at the type level via fine grained compositions of effects and
-even improved type safety via resource tracking through the environment. Since
-such computations are expressed in data structures rather than opaque functions
-the can be inspected, altered, filtered or otherwise interpreted depending on
-context and requirements. This aids reusability of the code on one hand, and
-simplifies mocking and testing on the other. It also makes it easier to refactor
-code and change implementations, because the functions using the effects are
-implemented against abstract interfaces rather than concrete effects.
-The PureScript language is an example of a language that already employs
-an extensible effects system to structure its computations.
+This paper presents the conception and development of extensible effect systems.
+It shows how a monad capable of handling extensible sets of effects can be
+constructed by decoupling the effect from the monad using a free monad and
+replacing concrete effects with an extensible union type. The implementation is
+reviewed and optimised to attain competitive performance with transformers and a
+minimal interface for effects is found resulting in several improvements over
+current solutions:
 
-Extensible effects may finally provide a solution to the problem of monolithic
-monads such as Haskell's \texttt{IO}.
+\begin{itemize}
+  \item Defining new effects involves minimal boilerplate. Necessary components
+    are only an encoding data type and an interpreter.
+  \item Computations using effects are constrained using the same member
+    constraint regardless of effect, relieving the need for effect classes and
+    instances.
+  \item The effect monad is much more transparent, enabling combinators for
+    effect relaying and generic handling.
+\end{itemize}
 
-A popular solution is the effectful, extensible monad based on the \emph{free
-  monad} which has the desired characteristics when combined with an open union,
-or equivalent structure.
-
-Thanks to additional effort being put into improving the performance of
-constructing a free monad and reflecting on the computations, extensible effect
-systems begin to outperform traditional systems such as MTL.
-
-Regardless of the concrete implementation extensible effect systems have
-certainly succeeded in simplifying the definition of monadic effects as well as
-means to test, mock and reuse them. Extensible effect systems have certainly
-come to stay.
+Other, similar, solutions are examined and compared, which suggest that even
+more powerful effect systems can be built upon these foundations and that
+extensible effects may be a safer, more expressive alternative to monolithic
+monads such as IO.

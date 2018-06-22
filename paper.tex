@@ -1,4 +1,4 @@
-\documentclass[sigconf]{acmart}
+\documentclass[10pt,a4paper,sigconf]{acmart}
 
 \usepackage{booktabs} % For formal tables
 \usepackage[utf8]{inputenc}
@@ -10,7 +10,7 @@
 
 \lstset{%
   language=Haskell,
-  basicstyle=\scriptsize\ttfamily,
+  basicstyle=\small\ttfamily,
   literate=
   {->}{{$\rightarrow$}}1 {=>}{{$\Rightarrow$}}1 {>>=}{{$\bindOp$}}2 {>>}{{$\bindIgnOp$}}1
   {<-}{{$\leftarrow$}}1
@@ -36,36 +36,25 @@
 
 
 \begin{abstract}
-Side effects are the sore spot for pure languages. The mathematical beauty of
-referential transparency is broken to allow outside interactions that are
-unpredictable and hard to reason about. Interactions such as network and
-filesystem access for example, that depend on invariants in the context they are
-executed in and may unexpectedly fail, but are necessary to write useful
-programs.
+  Monads are an abstraction used to express side effects in pure languages such
+  as Haskell and Idris. Due to their structure they do not compose well, and
+  state of the art solutions to this problem involve lots of boilerplate code.
 
-Fortunately, with the Monad, an abstraction was discovered that allowed safe and
-transparent, sequential interaction with an arbitrary ambient environment.
+  ``Extensible effect'' systems utilise a single Monad, parameterised by a set
+  of monadic effects. Effects are expressed as data structures, composed via an
+  open union, allowing dynamic addition, subtraction and rewriting of effects.
+  Unlike previous approaches, computations can be implemented in terms of a
+  \emph{single} generic member constraint on the effect set avoiding per-effect
+  boilerplate classes and instances.
 
-Yet it too is flawed. Versatile though the Monad is, composing effects in a
-reusable fashion proved difficult and has performance implications which
-increase in severity as the granularity of effects gets finer.
-
-With the free monad we now finally not only obtain a way to compose arbitrary
-effects together in an efficient way but can also easily implement effects via
-transformation into other effects and even implement the same effect in
-different ways depending on needs and constraints of its application.
-
-This paper provides an overview of the origins of the Monad, how its
-shortcomings lead to the invention of transformers, then the free monad, and
-eventually the freer monad. How free and freer monads work and how they can be
-used to realise our collective dream of pure, efficient, composable and
-versatile ambient interactions.
+  Furthermore new effects are easier to define and effect interpreters can be
+  selected dynamically.
 \end{abstract}
 
 \maketitle
 
 \input{Chapters/Introduction}
-\input{Chapters/Monads}
+% \input{Chapters/Monads}
 \input{Chapters/Transformers}
 \input{Chapters/Free}
 \input{Chapters/BetterOpenUnion}

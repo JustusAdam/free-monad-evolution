@@ -1,164 +1,63 @@
-\section{Transformers and Classes}
+\section{Current State of the Art}
 
 \label{sec:transformers}
 
-The need for ambient effects is different for each program. Whereas effect
-monads like \IOM{} and \HandlerForM{} are absolutely required, as they provide
-the only facility to interact with certain resources, additional ``convenience''
-monads such as \ReaderM{}, \WriterM{}, \StateM{}\footnote{Similar to the
-  \ReaderM{} monad but the environment is not static and can be altered during
-  the computation} and \ExceptM{} are ``optional'' and provide easier interfaces
-for describing certain types of computation.
+Monad transformers are the current state of the art when it comes to composing
+monads in Haskell. Each type of effect is implemented by what
+\citeauthor{steele-pseudomonad} called a
+\emph{pseudomonad}~\cite{steele-pseudomonad} and \citeauthor{monad-transformers}
+later broadened into the concept of a
+\emph{transformer}~\cite{monad-transformers}, a structure which leaves a
+``hole''~\cite{moggi-hole} in a monad to embed extensions. Concretely these
+``incomplete'' monads are parameterised by an additional type variable which is
+instantiated with an arbitrary monad, combining the effect of the transformer
+and the inner monad. As an example see the \texttt{StateT} monad transformer in
+figure~\ref{fig:state-monad} into which an arbitrary monad \texttt{m} is
+embedded. To access effects of the inner monad each transformer implements a
+\texttt{lift :: (MonadTrans m, Monad n) => n a -> m a} operation to embed
+computations using the inner monad in the transformer. Complex effect systems
+are built up by nesting multiple transformers into each other, forming a
+transformer stack which, is terminated by some none-transformer monad, such as
+\texttt{IO} or \texttt{Identity}.
 
-For each domain there is a different set of effect combinations particularly
-suited to describe it. When terminal monads are used, like those mentioned in
-the last paragraph, an entirely new monad would have to be implemented for every
-combination of effects we desire. Alternatively one large monad, which includes
-\textbf{all} effects could be used, but then each effect would necessarily have
-to be handled when the monad is run, regardless of whether the computation
-actually uses it. And how would the domain specific effects like \IOM{} and
-\HandlerForM{} be added to this monolithic monstrosity?
+A key idea of the approach of transformers is to abstract away from the concrete
+transformer using a type class to define an interface for its primitive
+operations~\cite{jones-constructor-classes}, which the associated transformer
+implements, such as the example in figure~\ref{fig:state-state-instance}. The
+same primitive operation may now be implemented by different monads, and
+crucially, other monad transformers. Transformers that do not implement a
+particular effect delegate its execution up the stack with \texttt{lift}. Thus
+these classes can be used to ``auto lift'' effects up the stack to the layer
+capable of handling it.
 
-Clearly neither of these approaches is well suited to solve the need for
-interleaved effects. A system is needed whereby larger, more complicated, monads
-can be composed of smaller, elemental ones. Ideally this could be done
-dynamically, as some sections of the code may require additional effects to be
-added, like adding a \WriterM{} to accumulate the results of some embedded
-computation.
-
-The most popular solution currently is the one implemented by the
-\texttt{mtl}\cite{mtl} and \texttt{transformers}\cite{transformers} library and
-it revolves around using stacks of so called \textbf{monad transformers} and
-\textbf{monad classes}. The approach was inspired by a paper from Mark P.
-Jones~\cite{transformer-inspiration}. The idea is that, rather than defining
-terminal monads, such as \ReaderM{}, the defined monad is parameterized by an
-additional \emph{inner monad} to which other effects can be delegated. The
-resulting structure is called a \emph{transformer} as it transforms a given
-monad by adding an additional type of effect. Transformers are typically named
-after their effect with a capital ``T'' prepended. Thus the transformer for the
-\ReaderM{} monad would be \ReaderT{}.
-
-This process of wrapping a monad with a transformer can be done arbitrarily
-often as the result of wrapping a monad with a transformer again produces a
-monad which can become the inner monad to another transformer. The resulting
-structure is often also referred to as a transformer \emph{stack} that is
-terminated at the last level by some terminal monad which cannot be used as a
-transformer, such as \IOM{} or \HandlerForM{}.
-
-When the computation is executed the layers of transformers are removed
-individually, the outermost layer always first until a computation in the base
-monad remains. Transformer stacks can even be used to describe pure computations
-by choosing \IdentityM{} as the inner monad, which resolves to a pure value.
-Additionally, during a computation, new (outer) layers can be dynamically added
-and removed from the monad. As such for instance a subcomputation can be run
-with an additional \WriterM{} effect, that is then separately unwrapped to
-obtain the written results.
-
-The characteristic action of a transformer, as captured by the
-\texttt{MonadTrans} class, is \texttt{lift :: (MonadTrans n, Monad m)
-  $\Rightarrow$ m a $\rightarrow$ n m a} which can be seen as embedding an
-action of the inner monad in the outer monad, or, alternatively, as delegating
-(lifting) an effect to be handled by the inner monad. Unfortunately this lifting
-operation poses a problem when the transformer stack get larger. Performing an
-effect which is far up the stack will require several lifting operations to
-reach the transformer that can actually satisfy it.
-
-To deal with this issue another concept is used in the form of \textbf{monad
-  classes}. Rather than defining effects on a transformer directly a type class
-is defined with the interface for the effect in question, see for instance the
-effect as provided by the \StateM{} monad in
-figure~\ref{fig:monad-class-example}. Transformers responsible for handling the
-effect are then made instances of this class and implement it accordingly.
-Additionally all other transformers are also made instances of this class but
-use \texttt{lift} to delegate the effect up the stack. Thus when such an effect
-is used it automatically propagates up the stack until it reaches the
-transformer capable of handling it (should one exist\footnote{Should no capable
-  handler exist the type checker will report a class instance resolution error.}).
+Furthermore computations using effects ban be implemented in terms of effect
+interfaces used, by constraining an abstract monad with effect classes, rather
+than concrete stacks or transformers, which makes them reusable in different
+monad stacks.
 
 \begin{figure}
-  \begin{lstlisting}
-    class MonadState s m | m -> s where
-      put :: s -> m ()
-      get :: m s
-  \end{lstlisting}
-  \caption{The monad class for the \StateM{} effect}
-  \label{fig:monad-class-example}
+  \lstinputlisting[lastline=11]{Listings/State.hs}
+  \caption{The \texttt{State} monad transformer}
+  \label{fig:state-monad}
 \end{figure}
-
-An additional advantage of monad classes is that effectful computations can be
-defined solely in terms of the set of effects it uses, rather than the concrete
-monad it operates in. As a result they can be reused in entirely different monad
-stacks without modification of the code so long as it satisfies the same effect
-interface. An example of this can be seen in figure~\ref{fig:monad-class-poly}.
-Whereas the second function, \texttt{writeState1}, can only be used in the
-explicit \StateT{}, \WriterT{} stack, the first function, \texttt{writeState},
-could also be used in a stack where the two transformers are reversed, or if it
-were wrapped by additional transformers.
 
 \begin{figure}
-  \begin{lstlisting}
-    writeState :: ( MonadState s m
-                  , MonadWriter s m
-                  , Monoid s )
-               => m ()
-    writeState = get >>= tell >> put mempty
-
-    writeState1 :: ( Monad m
-                   , Monoid s )
-                => StateT s (WriterT s m) ()
-    writeState = get >>= tell >> put mempty
-  \end{lstlisting}
-  \caption{Polymorphic and explicit effect signatures}
-  \label{fig:monad-class-poly}
+  \lstinputlisting[firstline=13]{Listings/State.hs}
+  \caption{Monad class for the state effect and its implementation}
+  \label{fig:state-state-instance}
 \end{figure}
 
-While this provides a clean interface for interacting with the various effects
-in our stack, using the class-based effect functions like \texttt{get}, it also
-poses some issues. In the interface definition for the \StateM{} effect, for
-instance, the type of state, which can be handled, is fixed to the monad, as
-expressed by the \texttt{m $\rightarrow$ s} functional constraint. This means a
-stack can only ever handle the state effect for \emph{one single type of state
-  $s$}. Adding additional \StateT{} transformer will shadow any \StateM{} effect
-of its inner monad and render it unreachable using the \texttt{MonadState}
-class~\footnote{Theoretically it is still reachable using a combination of
-  explicit \texttt{lift} and the effect function but using \texttt{lift}
-  reintroduces the issues from before that prompted the addition of monad
-  classes in the first place.}. This becomes particularly troublesome when
-libraries are used that implement certain interactions in terms of effects on a
-specific type, like \ReaderM{} on a specific type \texttt{t} but the monad it is
-supposed to run in is already a \ReaderM{} for some \emph{other} type. In these
-cases it becomes rather tedious to wrap and unwrap every library interaction
-with another \ReaderT{} to shadow ones own \ReaderM{} effect. This problem can
-be eased using lenses but requires that the library be defined both in terms of
-lenses as well as monad classes.
+Transformers and classes have two main shortcomings however.
 
-Monad class instances themselves also pose issues. In general it is beneficial
-to define custom effects in terms of new monad classes and transformers. This
-makes these effects extensible, composable and reusable, properties which are
-desired, particularly in large projects which are frequently subjected to
-refactoring and expansion.
-
-However defining you own transformers is tedious. Not only does one have to
-implement the transformer itself but additionally provide a monad class instance
-for every \emph{type of effect} one could possibly combine with the new
-transformer. Additionally a new class for the custom effect as well es instances
-of this class for every \emph{existing transformer} is necessary to achieve the
-maximum amount of composability. In case of GHC some of these can be
-automatically derived by the compiler, but only when \texttt{newtype} wrapping
-is used. When the granularity of the custom effects is decreased, that is they
-are broken into smaller and smaller pieces to achieve modularity, more and more
-of such definitions and instances are required, bloating the code.\footnote{One
-  particularly good example of this I believe is the \texttt{monad-logger}
-  library, paticularly this module
-  https://github.com/snoyberg/monad-logger/blob/master/Control/Monad/Logger.hs
-  where they even resort to the use of preprocessor macros to reduce the code
-  duplication.}
-
-A truly extensible system should not require changes to existing effects in
-order to incorporate new ones. Ideally we would only have to define our effect
-interface and a means to perform them and the system would implicitly know how
-to combine it all other effects.
-
-The next section introduces a first such system by first removing the
-boilerplate of defining monads in the first place and then moves on to extend
-this into a composable system of effects.
+\begin{enumerate}
+\item \textbf{Boilerplate}. The class machinery to overload effects requires
+  instances of each effect class, for each transformer. Newly defined
+  transformers must thus provide a boilerplate instance of every other effect
+  class delegating the effects using \texttt{lift}. Similarly newly defined
+  effects must also provide an instance for their effect class for
+  every preexisting transformer to lift the effects.
+  \item \textbf{Performance}. Every monadic action such as \texttt{pure},
+    $\bindOp$ and the effects must traverse the entire stack adding overhead
+    scaling quadratically with the size of the stack as shown by
+    \citeauthor{freer}~\cite[§4.1]{freer}.
+\end{enumerate}

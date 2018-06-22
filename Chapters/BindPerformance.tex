@@ -1,45 +1,33 @@
-\section{Asymptotic performance of $\bindOp$}
+\section{Improving the performance of $\bindOp$}
 
 \label{sec:bind-performance}
 
-As mentioned before the asymptotic performance of $\bindOp$ for the
-\texttt{Free} monad is not good. As can be seen in figure~\ref{fig:free-monad}
-the implementation for $\bindOp$ pushes the $\bindOp$ down the tree using
-\texttt{fmap} until it reaches a \texttt{Pure} value. This means that for every
-use of $\bindOp$ the entire tree must be traversed once.
+While there is beauty in the simplicity of the bare free monad its performance
+is lacking. As can be seen in figure~\ref{fig:free-monad} the implementation for
+$\bindOp$ pushes the $\bindOp$ down the tree using \texttt{fmap} until it
+reaches a \texttt{Pure} value. This means that for every use of $\bindOp$ the
+entire tree must be traversed once.
 
 \subsection{Better asymptotic performance using continuation passing}
 
 \label{sec:performance-with-codensity}
 
 This problem is akin to appending to singely linked lists where the entire list
-has to be traversed to find the final pointer and append. A solution to this
-problem was independently developed in 2008 by Janis
-Voigtländer~\cite{asymptotic-performance-improvement} in an attempt to make free
-monads more efficient. The idea is rather simple and again related to the
-problem of list appends. For list appends the solution is the so called
-\emph{difference list}~\cite{difference-list} which really is not a list but a
-function of type \texttt{[a] -> [a]}. This function will, when called with a
-list, append it to its end and return the resulting list. Normal list
-operations, such as appending and prepending are realised via function
-composition. This is often also described as building the list while leaving a
-``hole'' at its end to be plugged with a terminating value once the construction
-is complete. One this value is provided, which is usually just an empty list, it
-can be built in a single step. In imperative programming this is known as the
-\emph{builder pattern}. A hole is left to the end of the list and all altering
-operations are realised with function composition.
+has to be traversed to find the final pointer and append. \cite{difference-list}
+propose a solution whereby an unfinished list is represented as a function
+\texttt{[a] -> [a]} which appends a list to the intermediate result thus
+retaining a reference to the end of the list. List
+altering functions, such as appends and prepends are implemented as function
+composition and thus very cheap. When the construction step is completed the
+list can be simply realised by passing \texttt{[]} to the function.
 
-Asymptotic performance improvement of the free monad employs a similar idea. It
-uses a generic structure from category theory, which is now known as the
-\emph{Codensity monad}. The original paper by
-Voigtländer~\cite{asymptotic-performance-improvement} called it \texttt{C}. The
-codensity monad, shown in figure~\ref{fig:codensity-monad}, is also a function
-which, given a continuation, builds some monad \texttt{m}. The \emph{extensible
-  effects} library, developed by Kiselyov et al~\cite{extensible-effects} uses
-this codensity monad, specialised to a variant of \texttt{Free}. The figure also
-shows the new implementation for $\bindOp$ which does not push down the tree
-anymore, but builds two lambda functions, which are passed as continuations, a
-much cheaper operation in Haskell.
+\cite{asymptotic-performance-improvement}s
+solution~\cite{asymptotic-performance-improvement} an adaptation of the idea,
+applied to moands. He uses a \emph{Codensity monad} shown in
+figure~\ref{fig:codensity-monad}, which is a function that, given a
+continuation, builds some monad \texttt{m}. As the figure shows this $\bindOp$
+does not traverse the structure. Analogue to the list solution it retains a
+reference to the end.
 
 \begin{figure}
   \lstinputlisting[firstline=9]{Listings/Codensity.hs}
@@ -51,24 +39,14 @@ much cheaper operation in Haskell.
 
 \label{sec:type-aligned-sequence}
 
-The builder pattern, or programming with holes and continuations can drastically
-improve the construction of a value. However this only work when the structure
-is built in its entirety and then inspected in a second step. If the structure
-needs to be read \emph{during} its construction this approach cannot be used.
-Because a function is an opaque object, the intermediate values of a list, or in
-this case a forming monad chain, cannot be read, necessitating an evaluation of
-the structure before reading. Subsequent constructions can be sped up again, but
-an intermediate structure was allocated to facilitate the reads, diminishing the
-achieved gains.
-
-For the effect system, implemented by our free monads, in particular, this
-situation occurs in the interpreter. In order an effect we first must inspect
-the computation. When the effect has been handled the continuation has to be
-pushed through the monad, necessitating a full traversal of the (potentially
-growing) effect chain. The crucial point where this traversal is performed can
-be seen in figure~\ref{fig:ee-handle-relay} where the continuation is not simply
-appended, as was the case in figure~\ref{fig:codensity-monad}, but traverses the
-entire stack, similar to figure~\ref{fig:free-monad}.
+While a continuation based free monad improves the performance of $\bindOp$ it
+only does so during the initial construction. During interpretation the
+codensity monad is evaluated to be able to interpret the head of the constructed
+free monad. In \texttt{handle\_relay}, when the handler responds to its own
+effect, see~\ref{fig:ee-handle-relay}, the constructed free monad is traversed
+similarly to $\bindOp$ for \texttt{Free}. As a result handling effects is again
+associated with quadratic complexity, as was measured by
+\citeauthor{freer}~\cite[§4.1]{freer}.
 
 \begin{figure}
   \lstinputlisting{Listings/EEHandleRelay.hs}
@@ -77,47 +55,24 @@ entire stack, similar to figure~\ref{fig:free-monad}.
 \end{figure}
 
 The principal problem her is that new continuations, in the form on lambda
-functions are created and partial applications are pushed into the functor. This
-is a typical case where allocation occurs in Haskell. While these are eventually
-reduced to smaller and simpler expressions, the intermediate allocations never
-the less occur which increases both the time needed and the space. As the
-evaluation from the extensible effects paper~\cite{freer} shows this regression
-in time and space only occurs when a \emph{used} effect is threaded through the
-computation, meaning the second clause in figure~\ref{fig:ee-handle-relay} is
-used. In the case where the reader effect is \emph{under} the state, this clause
-is triggered much less often, explaining the linear performance. Such a
-performance degradation caused by the order of effects is highly undesirable. It
-would be difficult to a user of this system to utilise it correctly in the
-presence of such subtle differences influencing the performance.
+functions are created and partial applications are pushed into the functor.
+These intermediate allocations cause the increase in both time and space
+complexity. As the evaluation from the extensible effects paper~\cite{freer}
+shows this regression in time and space only occurs when a \emph{used} effect is
+threaded through the computation. In the case where the reader effect is
+\emph{under} the state, this clause is triggered when only on the last layer,
+explaining the linear performance.
 
-A recent paper by van der Ploeg and Kielyov~\cite{ftc-queue} designed a solution
+A recent paper by van der Ploeg and Kielyov~\cite{ftc-queue} proposes a solution
 to this problem in the form of so called \emph{type aligned sequences}. The
-approach is applicable much more broadly than only free monads. Van der Ploeg
+approach is applicable much more broadly than just free monads. Van der Ploeg
 and Kiselyov represent chains of computations with data structures via the use
-of Generalized Algebraic Data Types or GADTs. Whereas usually chains of
-computations are simply composed, instead they are stored in a data structure
-that captures how input and return types relates, preserving the type safety. A
-small example of one such structure can be seen in
-figure~\ref{fig:type-aligned-list}. This affords the possibility to inspect and
-alter individual links of the chain. Type safety is preserved via the GADT which
-does not allow the storage of an incompatible chain segments. For the free monad
-in particular a type aligned double-ended queue is used, represented internally
-as a tree. Now the handler computations inspect only the head of the queue and
-push new types of effects back onto the front without altering the tail.
-
-\begin{figure}
-  \lstinputlisting{Listings/TypeAlignedList.hs}
-  \caption{A type aligned list of functions}
-  \label{fig:type-aligned-list}
-\end{figure}
-
-With the two improvements from these last two sections the computational
-complexity of extensible effects improves dramatically. Whereas the naive
-implementation from section~\ref{sec:free} worse than quadratic in both time and
-space, the improved version performs linearly with respect to both. This is not
-only an improvement over the MTL library. According to the performance
-evaluation in \cite{freer} the MTL library is \emph{faster} for a single state
-effect, due to GHC specific optimisations deliberately targeted at the MTL
-\texttt{State} monad. However MTL does not scale well with more effects. It
-scales quadratically in both time and space, regardless of the ordering of
-effects.
+of Generalized Algebraic Data Types. Whereas usually chains of computations are
+simply composed, instead they are stored in a data structure that captures how
+input and return types relates, preserving the type safety. This affords the
+possibility to inspect and alter individual links of the chain. Type safety is
+preserved via the GADT which does not allow the storage of an incompatible chain
+segments. For the free monad in particular a type aligned double-ended queue is
+used, represented internally as a tree. Using this sequence handler computations
+inspect only the head of the queue and push new types of effects back onto the
+front without altering the tail.

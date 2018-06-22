@@ -21,10 +21,7 @@ interpretTimeIO :: Time a -> IO a
 interpretTimeIO (GetTime f) = f <$> getCurrentTime
 
 interpretSum ::
-     (forall a. f a -> m a)
-  -> (forall a. g a -> m a)
-  -> (f :+: g) a
-  -> m a
+     (forall a. f a -> m a) -> (forall a. g a -> m a) -> (f :+: g) a -> m a
 interpretSum handleF _ (Inl f) = handleF f
 interpretSum _ handleG (Inr g) = handleG g
 

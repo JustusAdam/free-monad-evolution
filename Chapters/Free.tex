@@ -1,80 +1,39 @@
-\section{Freedom to the Rescue}
+\section{Building a Naive Extensible Monad}
 
 \label{sec:free}
 
-In Section~\ref{sec:monads} the monad was introduced as a way to
-sequence effectful computations. Then various types of monads were
-found, encoding different effects.
+Using monad transformers involves writing significant boilerplate code defining
+effect instances because every effect is implemented on a separate transformer,
+which prevents sharing of the common action of lifting an effect. Lifting
+through a stack can be avoided entirely by instead using a \emph{single} monad
+parameterised over a variable set of effects.
 
 \subsection{Decoupling Monad and Effect}
 
 \label{sec:introducing-free}
 
-One of the most important discoveries~\cite{data-types-a-la-carte} was that the
-effect and its sequential nature can be separated and the latter encoded with a
-generic data structure. The essence of the monad, $\bindOp$ and \texttt{pure} is
-captured using the so called \textbf{free monad} (see
-figure~\ref{fig:free-monad}). This generic monad is parameterized by an effect
-type \texttt{f} which itself only needs to be a \Functor{}. Functors are much
-simpler structures than monads. They have no notion of sequentiality and
-continuations which makes them easier to implement. A Functor only needs to
-allow the application of a function to a contained value as illustrated by the
-type class \Functor{} displayed in figure~\ref{fig:functor-class}.
+\citeauthor{data-types-a-la-carte} has shown a monad which encapsulated the two
+monadic actions, \texttt{pure} and $\bindOp$ as a data type with no effect
+capabilities of its own~\cite{data-types-a-la-carte}. It is called a \emph{free}
+monad, because it extends \emph{any} functor, which is a simpler structure, with
+the monadic capabilities. Essentially the free monad represents an encoding for
+the \texttt{Monad} typeclass as a recursive data type parameterised with an
+effect functor. Figure~\ref{fig:free-monad} shows the implementation for reference.
 
-\begin{figure}
-  \begin{lstlisting}
-class Functor f where
-  fmap :: (a -> b) -> f a -> f b
-  \end{lstlisting}
-  \caption{The \Functor{} interface}
-  \label{fig:functor-class}
-\end{figure}
 \begin{figure}
   \lstinputlisting[firstline=8]{Listings/Free.hs}
   \caption{The simple free monad}
   \label{fig:free-monad}
 \end{figure}
-\begin{figure}
-  \begin{lstlisting}
-join :: Monad m => m (m a) -> m a
-join ma = ma >>= id
 
-(>>=) :: Monad m => m a -> (a -> m b) -> m b
-ma >>= cont = join $ fmap cont ma
-  \end{lstlisting}
-  \caption{The equivalence of $\bindOp$ and \texttt{join}}
-  \label{fig:join-bind-equivalence}
-\end{figure}
-
-The two constructors for the free monad represent the two characteristic
-functions of the \Monad{} in category theory, \texttt{pure} and \texttt{join},
-the latter represented by the \texttt{Impure} constructor. The \texttt{join ::
-  Monad m => m (m a) -> m a} function allows flattening of two stacked,
-identical monadic contexts. It, in conjuction with \texttt{pure} is sufficient
-to characterize a monad the same way that $\bindOp$ does since either one can be
-implemented in terms of the other, see figure~\ref{fig:join-bind-equivalence}.
-
-In case of the \texttt{Impure} constructor the continuation (\texttt{Free f a})
-is contained in a layer of the effect functor \texttt{f} meaning that proceeding
-with the computations requires execution of one instance of the effect. Only
-then is an interpretation of the inner (later) computation possible, including
-the effects used later in the computation. This ensures effects are executed in
-the same order that they are used in, in the program.
-
-Using this data structure removes the need define a \Monad{} instance for the
-effect type \texttt{f}, as the free monad is a true \Monad{} for \emph{any}
-\Functor{} \texttt{f}, see figure~\ref{fig:free-monad}, this also means all the
-useful combinators defined for monads are available to an effect system defined
-like this. Effects are entirely delegated to the functor \texttt{f} allowing
-completely independent and different kinds of effect systems to be implemented
-using \texttt{Free}.
-
-To run a computation expressed in a free monad effect system is done by a
-function typically called an \emph{interpreter}. This interpreter implements how
-the effects should be handled in a certain environment. One additional advantage
-of using an interpreter is that effects can be handled differently depending on
-the concrete interpreter. They can even run in different environments entirely
-without requiring a change in the computations code.
+By using the free monad the definition of \texttt{pure} and $\bindOp$ can be
+elided. Instead a data structure is obtained which has to be
+\emph{interpreted} later, allowing the precise interpretation to vary freely
+by using different interpreters. Figure~\ref{fig:console-io-example} shows a
+monad for interacting with a console implemented with two different
+interpreters. Crucially the computation is unaware of the different
+context/interpreter, which allows free monad based systems do be easily mocked
+for testing.
 
 \begin{figure}
   \lstinputlisting[firstline=7]{Listings/ConsoleIO.hs}
@@ -83,46 +42,34 @@ without requiring a change in the computations code.
   \label{fig:console-io-example}
 \end{figure}
 
-An example can be seen in figure~\ref{fig:console-io-example} where a simple
-console interaction is implemented using the free monad. Here two very different
-interpreters are provided. One where the interpretation happens in the IO monad
-and the two requests \texttt{ReadLine} and \texttt{WriteLine} are directly
-delegated to the usual I/O functions and a second one where the requests are
-served from a list of input strings and the written lines are again recorded in
-a list. This power of the free monad effects to be interpreted in different ways
-makes it ideal to implement mock interpreters for testing functions as well as
-making code more reusable in different scenarios. Transformers for instance do
-not offer the same degree of flexibility.
+There is a caveat to using functors rather than monads for effects however.
+Certain effects, such as \texttt{listen}, an effect belonging to the family of
+\texttt{Writer} effects, cannot be expressed as a functor and thus cannot be
+handled by a free monad based implementation.
 
 \subsection{Composing Effects}
 
 \label{sec:simple-effect-composition}
 
-Decoupling the monad from its effect enables the composition of effects using
-functor composition. Two effect systems implemented using the free monad can be
-composed into an effect system implementing both types of effects by composing
-the two effect functors into a single one and using the result functor to
-parameterize the free monad. When handling the effect the two functors are
-decomposed again and the individual effects are dispatched to corresponding
-handlers.
+Functors unlike monads are composable. A simple functor providing this feature
+is the \texttt{Sum} functor, here called \texttt{:+:}, see
+figure~\ref{fig:sum-functor}. It uses the same technique as the \texttt{OR} type
+by \citeauthor{data-types-a-la-carte}~\cite{data-types-a-la-carte} lifted to
+\texttt{* $\rightarrow$ *} kinded types. By nesting \texttt{:+:} values
+arbitrarily many functors can be composed. Such variable composites are called
+\emph{open union}, as opposed to static composites, such as algebraic datatypes.
+
+Similar to the transformer classes an interface is defined to interact with
+specific functors inside the composition. The subtype relation class can be seen
+in figure~\ref{fig:dispatch-class}. Unlike with transformer classes the subtype
+relation can be defined generically without knowing the concrete type of the
+functor being queried for.
 
 \begin{figure}
   \lstinputlisting[firstline=5,lastline=9]{Listings/SimpleOpenUnion.hs}
-  \caption{Then sum functor \texttt{:+:}}
+  \caption{The sum functor \texttt{:+:}}
   \label{fig:sum-functor}
 \end{figure}
-
-The simplest way to combine effects is the sum functor (\texttt{:+:}) as seen in
-figure \ref{fig:sum-functor}. If combines two functors \texttt{f} and
-\texttt{g}, dispatching requests accordingly. We can use this simple union of
-two types to express functors that combine arbitrary types by nesting
-\texttt{:+:} and add projection (\texttt{prj}) and injection (\texttt{inj}) via
-a subtype relation class \texttt{:<:}, see figure \ref{fig:dispatch-class}. This
-way we form a so called \emph{Open Union} of functors. The sum functor and the
-open union is a technique developed by Wouter
-Swierstra~\cite{data-types-a-la-carte} and based on the \texttt{OR} type from
-Liang, Hudak and Jones~\cite{monad-transformers}, lifted to the higher kinded
-functors.
 
 \begin{figure}
   \lstinputlisting[firstline=13]{Listings/SimpleOpenUnion.hs}
@@ -130,17 +77,19 @@ functors.
   \label{fig:dispatch-class}
 \end{figure}
 
-Using an open union like this as the base functor for the free monad allows us
-to parameterize functions over the types of effects they use without directly
-describing the structure of the functor and without the need for additional type
-classes and class instances for every new effect. An extensible version of the
-\texttt{readLine} and \texttt{writeLine} functions from the earlier example can
-be seen in figure \ref{fig:extensible-console-effect}. Whereas the earlier
-version from figure \ref{fig:console-io-example} constrained us to use the
-explicit type of \texttt{Free Console}, the extensible version allows any
-version of \texttt{Free}, so long as the effect functor contains the
-\texttt{Console} effect. Because of the \texttt{f :<: f} instance of the
-dispatch class \texttt{:+:} this also includes \texttt{Console} itself.
+This open union is used as base functor for \texttt{Free} to form a monad with a
+variable set of effects. Computations are parameterised over the types of
+effects they use, via the subtype relation, without directly describing the
+structure of the functor. Crucially there is only one subtype relation class
+which is used for all effects \emph{without} the need for additional instances
+for new effects. An extensible version of the \texttt{readLine} and
+\texttt{writeLine} functions from the earlier example can be seen in figure
+\ref{fig:extensible-console-effect}. Whereas the earlier version from figure
+\ref{fig:console-io-example} constrained us to use the explicit type of
+\texttt{Free Console}, the extensible version allows any version of
+\texttt{Free}, so long as the effect functor contains the \texttt{Console}
+effect. Because of the \texttt{f :<: f} instance of the dispatch class
+\texttt{:+:} this also includes \texttt{Console} itself.
 
 \begin{figure}
   \lstinputlisting[firstline=8]{Listings/ExtensibleConsole.hs}
@@ -148,58 +97,50 @@ dispatch class \texttt{:+:} this also includes \texttt{Console} itself.
   \label{fig:extensible-console-effect}
 \end{figure}
 
-As the functions are now independent of the concrete type of underlying functor
-we can combine effects freely. In figure \ref{fig:time-effect} for instance we
-can see another effect which retrieves the current time. A function that wishes
-to use both effects can now do so, again without having to specify any
-particular structure of the functor but simply gaining a constraint, see figure
-\ref{fig:combined-console-time-effect}.
+Similar to monad transformers computations using a subset of effects can always
+be used in functions constrained to a superset of effects.
+
+A unique feature of this extensible monad is the \texttt{interpose} combinator
+which is used to intercept and possibly alter, filter or relay requests. Whereas
+transformers would necessitate the provision of a separate implementation of
+\texttt{interpose} for each transformer, here we are able to implement a generic
+combinator usable with all effect types and agnostic to the interpreter used.
+
+To illustrate the usefulness of this feature figure~\ref{fig:attach-timestamp}
+shows a function which sanitises the input sent to the console for any monad
+providing the console effect.
 
 \begin{figure}
-  \lstinputlisting[firstline=9]{Listings/TimeM.hs}
-  \caption{An effect for retrieving the current time}
-  \label{fig:time-effect}
-\end{figure}
-
-\begin{figure}
-  \lstinputlisting{Listings/CombinedTimeConsole.hs}
-  \caption{A function using both \texttt{Console} and \texttt{Time}}
-  \label{fig:combined-console-time-effect}
-\end{figure}
-
-In addition the combination of effects we can also implement an
-\texttt{interpose} combinator which can be used to alter effects, see
-figure \ref{fig:interpose-combinator}. This can be used for instance to attach a
-timestamp to each message sent to the console by use of the \texttt{Time} effect
-or implement input filtering, see figure \ref{fig:attach-timestamp}.
-
-\begin{figure}
-  \lstinputlisting[firstline=13,lastline=22]{Listings/Interpose.hs}
+  \lstinputlisting[firstline=13,lastline=23]{Listings/Interpose.hs}
   \caption{The interpose combinator}
   \label{fig:interpose-combinator}
 \end{figure}
 
 \begin{figure}
-  \lstinputlisting[firstline=24]{Listings/Interpose.hs}
+  \lstinputlisting[firstline=37]{Listings/Interpose.hs}
   \caption{Two examples for using the interpose combinator}
   \label{fig:attach-timestamp}
 \end{figure}
 
 \subsection{Handling Effects}
 
-While it is not necessary to know about the concrete structure of the effect
-functor to use its effects it is necessary to handle them. The nesting of sum
-functors forms a linked list and effects have to interpreted starting from the
-head of the list. Various combinators are available to handle these effects. In
-figure~\ref{fig:interpreting} the \texttt{interpret} combinator is shown which
-interprets an effect in terms of other effects present in the list. Similarly it
-shows the signatures of other combinators. Some effects, like the
-\texttt{Reader} effect shown in figure \ref{fig:reader-effect} can be
-interpreted directly. Others may need to be delegated. The idea is that we
-either handle effects or delegate until we have unrolled the whole effect list
-and are left with some base monad (often \texttt{IO}) which we run directly
-using the \texttt{runM} or with no effect at all and we can simply return the
-pure value with \texttt{run}, both can be seen in figure \ref{fig:interpreting}.
+With the extensible effects monad generic combinators can be defined to aid the
+handling of effects. This is possible due to the fact that both the structure of
+the monad as well as a fair bit about the request structure is known.
+
+Most useful is the \texttt{interpret} and \texttt{reinterpret} combinator, shown
+in figure~\ref{fig:interpreting}. With \texttt{reinterpret} the effect is
+handled by inserting a new effect and handling the old effect in terms of this
+new effect and the old effects. New effects can therefore be handles by
+``remapping'' onto another effect for which a (generic) handler already exists.
+However the computation will remain unaware of the added effect \texttt{g}.
+\texttt{interpret} is similar but adds no new effect. Both combinators allow the
+user to leverage knowledge about other effects present to relay effects or
+leverage generic effects to implement specialised ones.
+Figure~\ref{fig:run-console} shows an example how the console effect is
+interpreted once by delegating to the \texttt{IO} monad and once by
+reinterpreting it as a state effect and using the generic \texttt{runState}
+interpreter.
 
 \begin{figure}
   \lstinputlisting[firstline=10]{Listings/Interpret.hs}
@@ -208,71 +149,7 @@ pure value with \texttt{run}, both can be seen in figure \ref{fig:interpreting}.
 \end{figure}
 
 \begin{figure}
-  \lstinputlisting[firstline=9]{Listings/Reader.hs}
-  \caption{The reader effect and its interpretation}
-  \label{fig:reader-effect}
-\end{figure}
-
-It may not seem immediately obvious, but this retains the same flexibility we
-saw earlier in the \texttt{Free} monad whereby effects could be interpreted
-differently based on context. In this case it is even easier to do this. For
-instance in the example of handling the console effect our computation will have
-a type of \texttt{(Console :<: sum, Functor sum) => Free sum a}. If this is to
-be interpreted in the \texttt{IO} monad \texttt{sum} can be instantiated to be
-\texttt{Console :+: IO} and interpreted with the \texttt{interpret} function.
-All console effects are delegated using the \texttt{liftIO} helper and the two
-handlers \texttt{putStrLn} and \texttt{getLine} which were also used in the
-earlier example in figure~\ref{fig:console-io-example}. A computation of type
-\texttt{Free IO a} remains, which we can be run using the \texttt{runM}
-function. If instead the interpretation should happen in a pure context, similar
-to the example before, \texttt{sum} can instead be instantiated to
-\texttt{Console :+: Identity}. Using the \texttt{reinterpret} function, the
-\texttt{Console} effect is turned into a \texttt{State ([String], [String])}
-effect. \texttt{State} is a standard effect and its implementation omitted here.
-It can be run using the \texttt{runState :: s -> Free (State s :+: sum) a ->
-  Free sum (a, s)} handler. After interpreting \texttt{State} only \texttt{Free
-  Identity (a, s)} is left, which fits the type signature for \texttt{run}.
-Using \texttt{run} the final type will be \texttt{(a, ([String], [String]))},
-which is the result of our computation, as well as the remaining, unread lines
-of input and the lines written to output. Code for this example can be viewed in
-figure~\ref{fig:run-console}. In short we retain the flexibility of
-context-dependent interpretation because our computation is unaware of the
-underlying effect layers and thus we are free to instantiate them as necessary.
-
-\begin{figure}
-  \lstinputlisting[firstline=42]{Listings/RunConsole.hs}
+  \lstinputlisting[firstline=37]{Listings/RunConsole.hs}
   \caption{Interpreting the extensible console effect}
   \label{fig:run-console}
 \end{figure}
-
-\subsection{Summary}
-
-Using a free monad we can decouple the computation using an effect from the way
-that effect is handled. Effects themselves need only concern themselves with
-encoding the effect in a functor and the free monad provides the sequentiality
-``for free''. By using an open union the functions using the effect can be
-implemented unaware of the concrete structure of the underlying effect functor.
-This means that new effects can be added in a modular fashion without the need
-to change the functions using them.
-
-Interpreting the various effects is highly flexible and can be changed depending
-on the context of the computation, allowing easy mocking for instance.
-Furthermore using the open union allows the interpretation of effects in terms
-of other effects that can be handled easier or are generic effect types.
-
-What was set out to do has been achieved, a highly modular, easy to extend and
-flexibly interpretable system for defining effectful computations.
-
-However an issue remains with regards to efficiency. Particularly the
-implementation of an open union using a linked list of functors means that some
-part of the list has to be traversed on every \texttt{fmap}, which is used
-ubiquitously in the implementation. This also means that the performance
-degrades as the number of different effect types grows. Smaller effect
-granularity, which leads to greater reusability and makes it easier to reason
-about effects, is punished by degrading performance, an undesirable effect.
-Furthermore the $\bindOp{}$ implementation also recurses into the continuation
-on every bind, leading to bad asymptotic performance.
-Section~\ref{sec:bind-performance} will explore an alternative way to implement
-the free monad to improve the performance of bind.
-Section~\ref{sec:better-open-union} shows ways to implement a more efficient
-open union.

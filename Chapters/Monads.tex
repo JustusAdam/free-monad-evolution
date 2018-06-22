@@ -1,6 +1,18 @@
 \section{Monads}
 
-\label{sec:monads}
+\label{sec:transformers}
+
+Monads are an abstraction used to implement effects on an ambient environment in
+languages such as Haskell and Idris~\cite{wadler-monads}. Inherently monads must
+only satisfy and interface of two function, \texttt{pure :: Monad m
+  $\Rightarrow$ a $\rightarrow$ m a} to embed any value in the monad, and
+\texttt{($\bindOp$) :: Monad m $\Rightarrow$ m a $\rightarrow$ (a $\rightarrow$
+  m b) $\rightarrow$ m b}, also called \emph{bind}, to sequence two monadic
+computations. While this captures the sequential nature of the monad, it does
+not provide any way to extract a value, or combine one monad with another,
+because the chained operation must live in the same monad as the value it is
+chained to.
+
 
 Purity, often also called referential transparency, is the property of
 a function to always produce the same result when called with the same

@@ -1,44 +1,26 @@
-\section{A better open union}
+\section{Improving the Open Union}
 
 \label{sec:better-open-union}
 
-Monad transformers have been a part of the Haskell ecosystem for a long time.
-They are the de-facto standard method used to implement modular effect systems.
-Given how useful and necessary, if not unavoidable, effect systems are for
-``real world applictions'' it is not surprising that monad transformers are now
-widely used in libraries and even more so in applications and frameworks. being
-the biggest player in the game and ubiquitously used comes with benefits for a
-library. Namely, in this case, the attention of the compiler writers. According
-to Kiselyof and Ishii~\cite{freer} the \texttt{State} monad in particular
-enjoys ``preferential treatment by GHC'' as the authors put it, ``with dedicated
-optimisation passes''. For an alternative effect system to be effective
-therefore it must provide at least comparable performance to the \texttt{mtl}
-library, it will not see significant adoption.
+For extensible effect systems to become viable it is important that its
+performance is comparable with the currently employed solutions.
+Monad transformers have been a part of the Haskell ecosystem for a long time and
+according to \citeauthor{freer} the \texttt{State} monad in particular benefits
+from dedicated optimisation passes in the Haskell compiler GHC.
 
 The free monad in conjunction with the open union from the previous section is
 unable to compete with the \texttt{mtl}. Encoding the open union of types with a
-linked list is not only slow but also degrades as the number of distinct effects
-increases, discouraging modularity and reusability. This section will explore
-alternative ways of representing an open union with the aim to improve its
-efficiency. The next section will deal with improving the asymptotic performance
-of the bind operator $\bindOp$ for free monads.
+chain of sums is inefficient. Its structure is similar to a linked list and
+hence it has similar computational complexity.
 
-In general union types, also called algebraic data types, are implemented as
-variably sized structures, prefixed by a tag of known size (typically a byte or
-machine word) which tells the inspecting party which concrete shape, also called
-constructor, inhabits this value.
+To construct a less space consuming open union, an encoding similar to the
+encoding of closed unions is used. Efficient closed unions pair the payload
+with a tag value. At runtime code dispatches based on the value of the tag.
 
-For a closed union the possible shapes the value can assume are known at compile
-time, enabling efficient code generation and statically checked pattern matches.
-To implement an extensible effect system however the union cannot be closed.
-Neither the concrete types nor their order is known when the effect monad itself
-is implemented. Furthermore it is desirable to be able to add additional effects
-for subcomputations only. Therefore the union must support dynamically adding
-constructors. A key idea from Kiselyov, Sably and
-Swords~\cite{extensible-effects} is that open unions can be implemented
-similarly to closed unions by coercing the concrete value to an untyped one and
-pairing it with a tag to discern its type at runtime. The first published
-version of this technique can be seen in figure~\ref{fig:union-type}.
+GHC provides a built-in mechanism for generating runtime representations of
+types called (\texttt{TypeRep}). \texttt{TypeRep}s support fast comparison via a
+compiler generated unique 128 bit MD5 hash. Figure~\ref{fig:union-type} shows
+the implementation of the reflection based union.
 
 \begin{figure}
   \lstinputlisting{Listings/EfficientUnion.hs}
@@ -46,13 +28,6 @@ version of this technique can be seen in figure~\ref{fig:union-type}.
       simplified and with the \texttt{Member} class renamed for consistency.}
   \label{fig:union-type}
 \end{figure}
-
-In its first instance the authors used the builtin reflection
-mechanism provided by the GHC compiler\cite{ghc}. It generates a runtime
-representation of a type called \texttt{TypeRep}. Each such \texttt{TypeRep}
-structure carries a compiler generated 128 bit unique MD5 hash of that concrete
-type. \texttt{TypeRep}'s are static constants and support fast comparison by
-comparing their fingerprints.
 
 While this allows for the implementation of a single-struct open union, as
 opposed to the linked list from before, resolving the type still involves
@@ -66,7 +41,7 @@ several steps.
 Considering the generally small size the union will have a 128 bit fingerprint
 is unnecessarily large.
 
-The followup paper by Kiselyov et al.~\cite{freer} proposes an alternative
+The followup paper by \citeauthor{freer}~\cite{freer} proposes an alternative
 source for a tag value, the index in the type level list. Since each union
 \texttt{Union r a} carries with it the type level list \texttt{r} each functor
 type \texttt{t} to which we can coerce a value must be present in this list and
@@ -76,5 +51,7 @@ than the fingerprint. The original implementation in~\cite{freer} used an
 \texttt{Word} which is the same size, but unsigned. Unlike the \texttt{TypeRep}
 from before this value can be directly inlined into the \texttt{Union}
 constructor, alleviating the need for both the pointer dereference as well as
-the tag comparison. As a result matching values of this union type is almost as
-efficient as matching a native, closed union value.
+the tag comparison.
+
+The index based approach also removes the need to derive a \texttt{Typeable}
+instance for the effect type.

@@ -11,17 +11,23 @@ data Free f a
 
 instance Functor f => Functor (Free f) where
   fmap f (Pure a) = Pure $ f a
-  fmap f (Impure eff) = Impure $ fmap (fmap f) eff
+  fmap f (Impure eff) =
+    Impure $ fmap (fmap f) eff
 
 instance Functor f => Monad (Free f) where
-  return = Pure
+  pure = Pure
+
   Pure a >>= cont = cont a
-  Impure fa >>= cont = Impure $ fmap (>>= cont) fa
+  Impure fa >>= cont =
+    Impure $ fmap (>>= cont) fa
 
 iter :: Functor f => (f a -> a) -> Free f a -> a
 iter _ (Pure a) = a
-iter handle (Impure fa) = handle $ fmap (iter handle) fa
+iter handle (Impure fa) =
+  handle $ fmap (iter handle) fa
 
-iterM :: (Monad m, Functor f) => (f (m a) -> m a) -> Free f a -> m a
+iterM :: (Monad m, Functor f)
+      => (f (m a) -> m a) -> Free f a -> m a
 iterM handle (Pure a) = pure a
-iterM handle (Impure fa) = handle $ fmap (iterM handle) fa
+iterM handle (Impure fa) =
+  handle $ fmap (iterM handle) fa

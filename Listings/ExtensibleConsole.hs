@@ -6,8 +6,11 @@ import ConsoleIO hiding (readLine, writeLine)
 import Free
 import SimpleOpenUnion
 
-writeLine :: (Console :<: f, Functor f) => String -> Free f ()
-writeLine str = Impure $ inj $ WriteLine str (pure ())
+writeLine :: (Console :<: effs, Functor effs)
+          => String -> Free effs ()
+writeLine str =
+  Impure $ inj $ WriteLine str (pure ())
 
-readLine :: (Console :<: f, Functor f) => Free f String
+readLine :: (Console :<: effs, Functor effs)
+         => Free effs String
 readLine = Impure $ inj $ ReadLine pure

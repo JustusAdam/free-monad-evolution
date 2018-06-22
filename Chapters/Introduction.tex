@@ -2,59 +2,39 @@
 
 \label{sec:introduction}
 
-Imperative languages, as well as many functional ones, make it decidedly easy to
-execute side effects. While many see this as an advantage in the sense that it
-``makes programming easier'', particularly members of the functional programming
-community are of a different opinion. The term ``side effect'' characterises all
-such interactions that are not evident from a functions type signature, which
-includes interactions with the operating system or modification of global
-structures in the program. What makes this complicated in particular is that
-programs become much harder to reason about in the presence of arbitrary side
-effects due to the increased degree of freedom of all function. The alternative
-is a concept called ``purity'', which removes arbitrary side effects and forces
-functions to declare all dependencies and results in the type signature. Due
-to the useful nature of side effects however even languages that are ``pure''
-must incorporate them.
+Monads are a powerful abstraction to define side effects. Given a sufficiently
+capable type system, effectful computations can be expressed as first class
+values with regular, higher kinded types. Monadic values however are inherently
+opaque, meaning computations only compose within the same monad. As a result
+interleaving different effects, that is composing different monads, poses a
+challenge.
 
-The most prominent representative of pure functional languages is Haskell. It
-has incorporated a concept called a \emph{Monad}, which has since been adopted
-by other, similar languages, to capture the sequential nature of computations
-involving side effects, encode effectful computations as values and thus allow
-them back into the language in a controlled and safe manner.
+Monad transformers~\cite{transformer-inspiration} use the approach of ``monads
+with a hole'', which employs an unfilled type parameter, representing an
+``inner'' monad, to which other effects can be delegated.
 
-However using monads for effectful computations has certain disadvantages. A
-major one being that monads themselves do not compose well. What makes side
-effects so convenient in impure languages is that any type of effect can be used
-together with any other type of effect. Achieving the same in pure languages has
-been the subject for over two decades of research with one of the most
-influential papers being \cite{transformer-inspiration} by
-\citeauthor{transformer-inspiration}. Their approach of using ``monads with a
-hole'', in this paper referred to a \emph{transformers} or \emph{monad
-  transformers}, has shaped the library and application design in Haskell ever
-since.
+While transformers solve the principal composition issue, which will be shown in
+more detail in §\ref{sec:transformers}, they involve a large amount of
+boilerplate code and the performance degrades quadratically~\cite{freer} with
+the number of transformers employed in a given monad.
 
-However these monad transformers are unwieldy in many situations and do no
-exhibit good performance as the number of composed effects increases. A new
-approach is receiving a lot of interest in recent years: ``extensible effects''.
-Here a single monad is used parameterised with a set of effects, as opposed to
-the monad stack used by transformers.
+This paper argues a different approach. Rather than using stacks of monads a
+single \emph{extensible monad} is employed. It is based on the \emph{free
+  monad}, which captures the essence of what it means to be a Monad, and has no
+capabilities of its own. Instead effects are encoded as values from a set of
+effects. Computations are expressed as sequences of effect values and
+continuations, which are handled by an interpreter. Computations using effects
+are implemented in terms of member constraints on the effect set, and thus
+reusable in different concrete effect sets and with different interpreters.
 
-Extensible effect systems encode computations as data which, on one hand, makes
-it easier to compose various effects, and on the other allows for effects to be
-handled in context dependent ways.
+Boilerplate code is reduced substantially, as defining new effects involves only
+the definition of its encoding values and one or more interpreters.
 
-This paper explores % how it all began when the monads attacked
-in greater detail how monads are used (section~\ref{sec:monads}) and what makes
-them unwieldy, how transformers attempted to solve the problem
-(section~\ref{sec:transformers}) and succeeded only partially. The largest
-section is attributed to extensible effect systems, beginning with the parts
-they are built out of (section~\ref{sec:free}) how these systems were improved
-to achieve competitive performance to transformers
-(section~\ref{sec:better-open-union}~and~\ref{sec:bind-performance}) and finally
-how this interface makes monadic effects more usable. This part is largely based
-on the two iterations of extensible effects as implemented by \citeauthor{freer},
-as it showcases nicely the progression of the system.
-Section~\ref{sec:alternative-systems} presents a select few similar systems,
-comparing and contrasting with the system from \citeauthor{freer}, showing both
-the potential for new features in the future as well as providing evidence for
-the universality of the approach to the underlying implementation.
+To implement an extensible effect system first a naive but simple implementation
+of a free monad and an effect set is shown (§\ref{sec:free}). Subsequently this
+approach is improved to be competitive with previous approaches to make it
+viable for general use (§\ref{sec:better-open-union},
+§\ref{sec:bind-performance}) and further simplify the interface
+(§\ref{sec:freer}) for defining effects. The implemented approach is
+contextualised with other, similar systems in terms of both how they are
+implemented and the feature set they offer (§\ref{sec:alternative-systems}).

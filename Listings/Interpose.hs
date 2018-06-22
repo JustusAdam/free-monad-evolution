@@ -11,20 +11,21 @@ import SimpleOpenUnion
 import TimeM
 
 interpose ::
-     (f :<: sum, Functor f, Functor sum)
-  => (forall b. f b -> Free sum b)
-  -> Free sum a
-  -> Free sum a
+     (f :<: effs, Functor f, Functor effs)
+  => (forall b. f b -> Free effs b)
+  -> Free effs a
+  -> Free effs a
 interpose _ (Pure a) = Pure a
 interpose handler (Impure eff) =
   case prj eff of
     Nothing -> Impure eff
-    Just f -> join $ handler $ fmap (interpose handler) f
+    Just f ->
+      join $ handler $ fmap (interpose handler) f
 
-addTimestamp ::
-     (Functor sum, Time :<: sum, Console :<: sum)
-  => Free sum a
-  -> Free sum a
+addTimestamp :: ( Functor effs
+                , Time :<: effs
+                , Console :<: effs)
+     => Free effs a -> Free effs a
 addTimestamp =
   interpose $ \case
     WriteLine line cont -> do
@@ -34,10 +35,9 @@ addTimestamp =
     other -> Impure $ inj $ fmap pure other
 
 escapeInput ::
-     (Functor sum, Console :<: sum)
+     (Functor effs, Console :<: effs)
   => (String -> String)
-  -> Free sum a
-  -> Free sum a
+  -> Free effs a -> Free effs a
 escapeInput sanitize =
   interpose $ \case
     ReadLine cont -> do

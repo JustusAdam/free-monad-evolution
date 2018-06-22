@@ -1,18 +1,23 @@
-\section{A freer monad}
+\section{Relinquishing the Functor Constraint While Gaining Performance}
 
 \label{sec:freer}
 
-The ``freer'' effect system brings another advantage over the older ``extensible
-effects''. As mentioned in section~\ref{sec:free} the definition of an effect
-system requires an effect \texttt{Functor}. This is not strictly true. It is
-convenient for the definition of a simple effect system, but can be elided. One
-way to do so is using yet another kan extension, a relative of to the
-\emph{codensity monad} seen in section~\ref{sec:performance-with-codensity}.
-This structure is called the \emph{coyoneda functor} and it is able to lift an
-arbitrary \texttt{* $\rightarrow$ *} kinded type to a functor. Simply put it
-accumulates alterations applied with \texttt{fmap} in the first field. The
-contained structure can be extracted, if a function is provided to apply the
-accumulated alterations.
+Upon inspection a pattern can be noticed in the effect values used in extensible
+effect systems. The ``functor'' part of the value i.e. the one being transformed
+upon application of \texttt{fmap} tends to be a function of type \texttt{t
+  $\rightarrow$ a}, where \texttt{t} is the type of value returned by the effect
+and \texttt{a} is the type parameterising the functor. In cases where the effect
+returns nothing this field is always type \texttt{a} which could be rewritten to
+\texttt{() $\rightarrow$ a} to fit this pattern.
+
+This is a known pattern exploited by the \emph{coyoneda functor}, shown in
+figure~\ref{fig:coyoneda}. The coyoneda functor can be thought of like a ``free
+functor'' and analogous to the free monad it provides a functor instance for
+any type of kind \texttt{* $\rightarrow$ *}.
+
+By exploiting this pattern and combining the coyoneda functor with the free
+monad we can construct a ``freer'' monad, which works on any higher kinded
+effect value and requires no functor instance.
 
 \begin{figure}
   \lstinputlisting[firstline=3]{Listings/Coyoneda.hs}
@@ -26,27 +31,25 @@ accumulated alterations.
   \label{fig:freer-monad}
 \end{figure}
 
-While this structure can remove the functor constraint it still couples the
-continuation with the effect. Kiselyov and Ishii~\cite{freer} take it one step
-further and completely uncouple the two. To achieve this the free monad is
-augmented such that the \texttt{Impure} case contains \emph{two} fields, one for
-the effect used and one for its continuation as can be seen in
-figure~\ref{fig:freer-monad}. In fact only having this decoupled monad is what
-enables the use of the type aligned sequence in
-section~\ref{sec:type-aligned-sequence}. Since the continuation is no longer
-hidden in the effect functor and has a the general structure of \texttt{a
-  $\rightarrow$ Eff eff b} it no longer needs to be an actual function, but can
-be replaced by something which can be used \emph{like a function}, in case of
-the freer monad a sequence of continuations.
+Figure~\ref{fig:freer-monad} shows the augmented free monad with the
+\texttt{Impure} case now containing \emph{two} fields, one for the effect used
+and one for its continuation as can be seen in figure~\ref{fig:freer-monad}.
+
+Decoupling effect and continuation this way is what enables the use of the type
+aligned sequence in section~\ref{sec:type-aligned-sequence}. Since the
+continuation is no longer hidden in the effect functor and has a the general
+structure of \texttt{a $\rightarrow$ Eff eff b} it no longer needs to be an
+actual function, but can be replaced by something which can be used \emph{like a
+  function}, in case of the freer monad a sequence of continuations.
 
 Uncoupling effect and continuation results in a much more expressive interface
 for effects. Whereas before each effect contained some additional fields for
 continuations, now their mere signatures concisely express \emph{what} the
 effect actually does. Freer effects use GADTs to express which forms an effect
-may assume. Thus an effect is associated with some potential inputs, which are
-later passed to the effect handler, via the fields of the effect value, as well
-as with the type of the data returned by the effect to the computation via the
-type variable parameterising the effect type. For instance in
+may assume. Thus an effect is associated with some potential inputs, stored as
+fields in the effect value and later available in the effect interpreter and the
+type of data returned from the effect to the computation via the type variable
+parameterising the effect type. For instance in
 figure~\ref{fig:console-io-freer} is the console effect from
 section~\ref{sec:free} and figure~\ref{fig:console-io-example}. The two
 constructors of the effect now describe, in types, what to expect, similar to a

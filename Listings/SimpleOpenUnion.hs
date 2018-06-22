@@ -24,7 +24,8 @@ instance f :<: (f :+: g) where
   prj (Inl f) = Just f
   prj _ = Nothing
 
-instance {-# OVERLAPPABLE #-} (f :<: sum) => f :<: (g :+: sum) where
+instance {-# OVERLAPPABLE #-}
+  (f :<: sup) => f :<: (g :+: sup) where
   inj = Inr . inj
   prj (Inr sum) = prj sum
   prj _ = Nothing

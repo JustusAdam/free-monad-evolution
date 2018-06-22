@@ -10,13 +10,13 @@ import SimpleOpenUnion
 interpret ::
      (Functor effs, Functor f)
   => (forall w. f w -> Free effs w)
-  -> Free (f :+: effs) a
-  -> Free effs a
+  -> Free (f :+: effs) a -> Free effs a
 interpret _ (Pure a) = pure a
 interpret handle (Impure (Inr others)) =
   Impure $ fmap (interpret handle) others
 interpret handle (Impure (Inl eff)) =
-  join $ handle $ fmap (interpret handle) eff
+  join $ handle
+    $ fmap (interpret handle) eff
 
 reinterpret ::
      (Functor f, Functor g, Functor effs)
@@ -25,9 +25,11 @@ reinterpret ::
   -> Free (g :+: effs) b
 reinterpret _ (Pure a) = pure a
 reinterpret handle (Impure (Inr others)) =
-  Impure $ Inr $ fmap (reinterpret handle) others
+  Impure $ Inr
+    $ fmap (reinterpret handle) others
 reinterpret handle (Impure (Inl eff)) =
-  join $ handle $ fmap (reinterpret handle) eff
+  join $ handle
+    $ fmap (reinterpret handle) eff
 
 run :: Free Identity a -> a
 run = iter runIdentity
