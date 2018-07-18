@@ -2,6 +2,9 @@
 
 Summary on the history and evolution of the free monad
 
+[The paper](/versions/final.pdf)
+
+[The presentation](/versions/presentation.pdf)
 
 This repository contains the LaTeX sources for my **Hauptseminar** in
 the **Technische Universität Dresden**.
